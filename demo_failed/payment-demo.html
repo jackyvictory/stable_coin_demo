@@ -1,0 +1,753 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EVO Payment - Payment Handler Demo</title>
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Roboto', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: #333;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 30px;
+        }
+        
+        .demo-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 20px;
+        }
+        
+        .card {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            padding: 25px;
+        }
+        
+        .card h3 {
+            margin-bottom: 20px;
+            color: #333;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 10px;
+        }
+        
+        .form-group {
+            margin-bottom: 15px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        
+        .form-group input,
+        .form-group select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+        
+        .btn {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 25px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin: 5px;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+        }
+        
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .btn-secondary {
+            background: #6c757d;
+        }
+        
+        .btn-success {
+            background: #46C16D;
+        }
+        
+        .btn-danger {
+            background: #D7272B;
+        }
+        
+        .status-indicator {
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+            font-weight: bold;
+        }
+        
+        .status-pending {
+            background: #fff3cd;
+            color: #856404;
+        }
+        
+        .status-completed {
+            background: #d4edda;
+            color: #155724;
+        }
+        
+        .status-expired {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        
+        .payment-info {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+            font-family: monospace;
+            font-size: 12px;
+            white-space: pre-wrap;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        
+        .qr-container {
+            text-align: center;
+            padding: 20px;
+        }
+        
+        .qr-code {
+            border: 5px solid white;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        
+        .payment-list {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        
+        .payment-item {
+            border: 1px solid #eee;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 10px 0;
+            background: #f9f9f9;
+        }
+        
+        .payment-item.completed {
+            border-color: #46C16D;
+            background: #f0fff4;
+        }
+        
+        .payment-item.expired {
+            border-color: #D7272B;
+            background: #fff5f5;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+        
+        .stat-item {
+            text-align: center;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+        
+        .stat-number {
+            font-size: 24px;
+            font-weight: bold;
+            color: #667eea;
+        }
+        
+        .stat-label {
+            font-size: 12px;
+            color: #666;
+            margin-top: 5px;
+        }
+        
+        .hidden {
+            display: none;
+        }
+        
+        @media (max-width: 768px) {
+            .demo-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .container {
+                padding: 10px;
+            }
+        }
+    </style>
+    
+    <!-- 外部库 -->
+    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+    
+    <!-- 配置文件 -->
+    <script src="./config.js"></script>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚀 EVO Payment Handler Demo</h1>
+            <p>支付信息生成和管理功能演示</p>
+        </div>
+        
+        <div class="demo-grid">
+            <!-- 创建支付 -->
+            <div class="card">
+                <h3>💳 创建支付</h3>
+                
+                <div class="form-group">
+                    <label for="paymentAmount">支付金额 (USD)</label>
+                    <input type="number" id="paymentAmount" placeholder="输入金额" value="10" min="0.01" step="0.01">
+                </div>
+                
+                <div class="form-group">
+                    <label for="paymentToken">选择代币</label>
+                    <select id="paymentToken">
+                        <option value="USDT">USDT - Tether USD</option>
+                        <option value="USDC">USDC - USD Coin</option>
+                        <option value="BUSD">BUSD - Binance USD</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="userAddress">用户钱包地址</label>
+                    <input type="text" id="userAddress" placeholder="0x..." value="0x742d35Cc6634C0532925a3b8D4C9db96C4b4d8b6">
+                </div>
+                
+                <button id="createPayment" class="btn">创建支付</button>
+                
+                <div id="createPaymentResult" class="payment-info hidden"></div>
+            </div>
+            
+            <!-- 二维码生成 -->
+            <div class="card">
+                <h3>📱 二维码生成</h3>
+                
+                <div class="form-group">
+                    <label for="qrPaymentId">支付ID</label>
+                    <input type="text" id="qrPaymentId" placeholder="输入支付ID">
+                </div>
+                
+                <button id="generateQR" class="btn">生成二维码</button>
+                <button id="clearQR" class="btn btn-secondary">清除</button>
+                
+                <div id="qrContainer" class="qr-container hidden">
+                    <canvas id="qrCanvas" class="qr-code"></canvas>
+                    <div id="qrInfo" class="payment-info"></div>
+                </div>
+            </div>
+            
+            <!-- 支付状态管理 -->
+            <div class="card">
+                <h3>📊 支付状态管理</h3>
+                
+                <div class="form-group">
+                    <label for="statusPaymentId">支付ID</label>
+                    <input type="text" id="statusPaymentId" placeholder="输入支付ID">
+                </div>
+                
+                <div class="form-group">
+                    <label for="newStatus">新状态</label>
+                    <select id="newStatus">
+                        <option value="pending">Pending</option>
+                        <option value="monitoring">Monitoring</option>
+                        <option value="confirmed">Confirmed</option>
+                        <option value="completed">Completed</option>
+                        <option value="expired">Expired</option>
+                        <option value="failed">Failed</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="txHash">交易哈希 (可选)</label>
+                    <input type="text" id="txHash" placeholder="0x...">
+                </div>
+                
+                <button id="updateStatus" class="btn">更新状态</button>
+                <button id="getPaymentInfo" class="btn btn-secondary">获取信息</button>
+                
+                <div id="paymentStatus" class="status-indicator hidden"></div>
+                <div id="paymentInfo" class="payment-info hidden"></div>
+            </div>
+            
+            <!-- 支付统计 -->
+            <div class="card">
+                <h3>📈 支付统计</h3>
+                
+                <div id="statsContainer">
+                    <div class="stats-grid">
+                        <div class="stat-item">
+                            <div class="stat-number" id="totalPayments">0</div>
+                            <div class="stat-label">总支付数</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-number" id="pendingPayments">0</div>
+                            <div class="stat-label">待处理</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-number" id="completedPayments">0</div>
+                            <div class="stat-label">已完成</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-number" id="totalAmount">$0</div>
+                            <div class="stat-label">总金额</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <button id="refreshStats" class="btn">刷新统计</button>
+                <button id="exportData" class="btn btn-secondary">导出数据</button>
+                <button id="clearAllPayments" class="btn btn-danger">清除所有</button>
+            </div>
+            
+            <!-- 支付列表 -->
+            <div class="card">
+                <h3>📋 支付列表</h3>
+                
+                <div class="form-group">
+                    <label for="filterStatus">状态过滤</label>
+                    <select id="filterStatus">
+                        <option value="">全部</option>
+                        <option value="pending">Pending</option>
+                        <option value="completed">Completed</option>
+                        <option value="expired">Expired</option>
+                        <option value="failed">Failed</option>
+                    </select>
+                </div>
+                
+                <button id="refreshList" class="btn">刷新列表</button>
+                
+                <div id="paymentList" class="payment-list">
+                    <!-- 支付列表将在这里显示 -->
+                </div>
+            </div>
+            
+            <!-- 实时监控 -->
+            <div class="card">
+                <h3>👀 实时监控</h3>
+                
+                <div id="realtimeLog" class="payment-info" style="height: 200px;">
+                    <!-- 实时日志将在这里显示 -->
+                </div>
+                
+                <button id="toggleMonitoring" class="btn">开始监控</button>
+                <button id="clearLog" class="btn btn-secondary">清除日志</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- PaymentHandler -->
+    <script src="./js/payment-handler.js"></script>
+    
+    <!-- 演示脚本 -->
+    <script>
+        let isMonitoring = false;
+        let monitoringInterval;
+        
+        // DOM 元素
+        const elements = {
+            // 创建支付
+            paymentAmount: document.getElementById('paymentAmount'),
+            paymentToken: document.getElementById('paymentToken'),
+            userAddress: document.getElementById('userAddress'),
+            createPayment: document.getElementById('createPayment'),
+            createPaymentResult: document.getElementById('createPaymentResult'),
+            
+            // 二维码
+            qrPaymentId: document.getElementById('qrPaymentId'),
+            generateQR: document.getElementById('generateQR'),
+            clearQR: document.getElementById('clearQR'),
+            qrContainer: document.getElementById('qrContainer'),
+            qrCanvas: document.getElementById('qrCanvas'),
+            qrInfo: document.getElementById('qrInfo'),
+            
+            // 状态管理
+            statusPaymentId: document.getElementById('statusPaymentId'),
+            newStatus: document.getElementById('newStatus'),
+            txHash: document.getElementById('txHash'),
+            updateStatus: document.getElementById('updateStatus'),
+            getPaymentInfo: document.getElementById('getPaymentInfo'),
+            paymentStatus: document.getElementById('paymentStatus'),
+            paymentInfo: document.getElementById('paymentInfo'),
+            
+            // 统计
+            totalPayments: document.getElementById('totalPayments'),
+            pendingPayments: document.getElementById('pendingPayments'),
+            completedPayments: document.getElementById('completedPayments'),
+            totalAmount: document.getElementById('totalAmount'),
+            refreshStats: document.getElementById('refreshStats'),
+            exportData: document.getElementById('exportData'),
+            clearAllPayments: document.getElementById('clearAllPayments'),
+            
+            // 列表
+            filterStatus: document.getElementById('filterStatus'),
+            refreshList: document.getElementById('refreshList'),
+            paymentList: document.getElementById('paymentList'),
+            
+            // 监控
+            realtimeLog: document.getElementById('realtimeLog'),
+            toggleMonitoring: document.getElementById('toggleMonitoring'),
+            clearLog: document.getElementById('clearLog')
+        };
+        
+        // 初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('Payment Handler Demo 初始化');
+            
+            // 绑定事件
+            bindEvents();
+            
+            // 初始化数据
+            refreshStats();
+            refreshPaymentList();
+            
+            // 监听支付状态变化
+            window.addEventListener('paymentStatusChanged', handlePaymentStatusChanged);
+        });
+        
+        // 绑定事件
+        function bindEvents() {
+            // 创建支付
+            elements.createPayment.addEventListener('click', createPayment);
+            
+            // 二维码
+            elements.generateQR.addEventListener('click', generateQRCode);
+            elements.clearQR.addEventListener('click', clearQRCode);
+            
+            // 状态管理
+            elements.updateStatus.addEventListener('click', updatePaymentStatus);
+            elements.getPaymentInfo.addEventListener('click', getPaymentInfo);
+            
+            // 统计
+            elements.refreshStats.addEventListener('click', refreshStats);
+            elements.exportData.addEventListener('click', exportPaymentData);
+            elements.clearAllPayments.addEventListener('click', clearAllPayments);
+            
+            // 列表
+            elements.refreshList.addEventListener('click', refreshPaymentList);
+            elements.filterStatus.addEventListener('change', refreshPaymentList);
+            
+            // 监控
+            elements.toggleMonitoring.addEventListener('click', toggleMonitoring);
+            elements.clearLog.addEventListener('click', clearRealtimeLog);
+        }
+        
+        // 创建支付
+        function createPayment() {
+            try {
+                const amount = parseFloat(elements.paymentAmount.value);
+                const token = elements.paymentToken.value;
+                const userAddress = elements.userAddress.value;
+                
+                if (!amount || amount <= 0) {
+                    throw new Error('请输入有效金额');
+                }
+                
+                if (!userAddress) {
+                    throw new Error('请输入用户地址');
+                }
+                
+                const paymentInfo = window.PaymentHandler.createPayment({
+                    amount,
+                    token,
+                    userAddress
+                });
+                
+                // 显示结果
+                elements.createPaymentResult.textContent = JSON.stringify(paymentInfo, null, 2);
+                elements.createPaymentResult.classList.remove('hidden');
+                
+                // 自动填充支付ID到其他输入框
+                elements.qrPaymentId.value = paymentInfo.paymentId;
+                elements.statusPaymentId.value = paymentInfo.paymentId;
+                
+                // 刷新统计和列表
+                refreshStats();
+                refreshPaymentList();
+                
+                logMessage(`✅ 创建支付成功: ${paymentInfo.paymentId}`);
+                
+            } catch (error) {
+                alert('创建支付失败: ' + error.message);
+                logMessage(`❌ 创建支付失败: ${error.message}`);
+            }
+        }
+        
+        // 生成二维码
+        async function generateQRCode() {
+            try {
+                const paymentId = elements.qrPaymentId.value;
+                
+                if (!paymentId) {
+                    throw new Error('请输入支付ID');
+                }
+                
+                const qrData = await window.PaymentHandler.generateQRCode(
+                    paymentId, 
+                    elements.qrCanvas
+                );
+                
+                // 显示二维码信息
+                elements.qrInfo.textContent = JSON.stringify(qrData, null, 2);
+                elements.qrContainer.classList.remove('hidden');
+                
+                logMessage(`📱 生成二维码成功: ${paymentId}`);
+                
+            } catch (error) {
+                alert('生成二维码失败: ' + error.message);
+                logMessage(`❌ 生成二维码失败: ${error.message}`);
+            }
+        }
+        
+        // 清除二维码
+        function clearQRCode() {
+            elements.qrContainer.classList.add('hidden');
+            elements.qrInfo.textContent = '';
+            
+            // 清除canvas
+            const ctx = elements.qrCanvas.getContext('2d');
+            ctx.clearRect(0, 0, elements.qrCanvas.width, elements.qrCanvas.height);
+        }
+        
+        // 更新支付状态
+        function updatePaymentStatus() {
+            try {
+                const paymentId = elements.statusPaymentId.value;
+                const status = elements.newStatus.value;
+                const txHash = elements.txHash.value;
+                
+                if (!paymentId) {
+                    throw new Error('请输入支付ID');
+                }
+                
+                const additionalData = {};
+                if (txHash) {
+                    additionalData.txHash = txHash;
+                }
+                
+                window.PaymentHandler.updatePaymentStatus(paymentId, status, additionalData);
+                
+                // 显示状态
+                elements.paymentStatus.textContent = `状态已更新: ${status}`;
+                elements.paymentStatus.className = `status-indicator status-${status}`;
+                elements.paymentStatus.classList.remove('hidden');
+                
+                // 刷新统计和列表
+                refreshStats();
+                refreshPaymentList();
+                
+                logMessage(`🔄 更新支付状态: ${paymentId} -> ${status}`);
+                
+            } catch (error) {
+                alert('更新状态失败: ' + error.message);
+                logMessage(`❌ 更新状态失败: ${error.message}`);
+            }
+        }
+        
+        // 获取支付信息
+        function getPaymentInfo() {
+            try {
+                const paymentId = elements.statusPaymentId.value;
+                
+                if (!paymentId) {
+                    throw new Error('请输入支付ID');
+                }
+                
+                const paymentInfo = window.PaymentHandler.getPaymentInfo(paymentId);
+                
+                if (paymentInfo) {
+                    elements.paymentInfo.textContent = JSON.stringify(paymentInfo, null, 2);
+                    elements.paymentInfo.classList.remove('hidden');
+                    
+                    logMessage(`ℹ️ 获取支付信息: ${paymentId}`);
+                } else {
+                    elements.paymentInfo.textContent = '支付信息未找到';
+                    elements.paymentInfo.classList.remove('hidden');
+                    
+                    logMessage(`⚠️ 支付信息未找到: ${paymentId}`);
+                }
+                
+            } catch (error) {
+                alert('获取支付信息失败: ' + error.message);
+                logMessage(`❌ 获取支付信息失败: ${error.message}`);
+            }
+        }
+        
+        // 刷新统计
+        function refreshStats() {
+            const stats = window.PaymentHandler.getPaymentStats();
+            
+            elements.totalPayments.textContent = stats.total;
+            elements.pendingPayments.textContent = stats.pending;
+            elements.completedPayments.textContent = stats.completed;
+            elements.totalAmount.textContent = `$${stats.totalAmount.toFixed(2)}`;
+        }
+        
+        // 导出支付数据
+        function exportPaymentData() {
+            const data = window.PaymentHandler.exportPaymentData();
+            
+            // 创建下载链接
+            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `evo-payment-data-${new Date().toISOString().split('T')[0]}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+            
+            logMessage(`📥 导出支付数据: ${data.payments.length} 条记录`);
+        }
+        
+        // 清除所有支付
+        function clearAllPayments() {
+            if (confirm('确定要清除所有支付记录吗？')) {
+                window.PaymentHandler.payments.clear();
+                refreshStats();
+                refreshPaymentList();
+                
+                logMessage(`🗑️ 清除所有支付记录`);
+            }
+        }
+        
+        // 刷新支付列表
+        function refreshPaymentList() {
+            const filterStatus = elements.filterStatus.value;
+            const filters = filterStatus ? { status: filterStatus } : {};
+            const payments = window.PaymentHandler.getAllPayments(filters);
+            
+            elements.paymentList.innerHTML = '';
+            
+            if (payments.length === 0) {
+                elements.paymentList.innerHTML = '<p style="text-align: center; color: #666;">暂无支付记录</p>';
+                return;
+            }
+            
+            payments.forEach(payment => {
+                const item = document.createElement('div');
+                item.className = `payment-item ${payment.status}`;
+                item.innerHTML = `
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                        <strong>${payment.paymentId}</strong>
+                        <span class="status-indicator status-${payment.status}" style="padding: 2px 8px; font-size: 12px;">
+                            ${payment.status.toUpperCase()}
+                        </span>
+                    </div>
+                    <div style="font-size: 14px; color: #666;">
+                        <p>💰 金额: $${payment.amount} ${payment.tokenSymbol}</p>
+                        <p>📅 创建: ${payment.createdAt.toLocaleString()}</p>
+                        <p>⏰ 过期: ${payment.expiresAt.toLocaleString()}</p>
+                        ${payment.txHash ? `<p>🔗 交易: ${payment.txHash.substring(0, 20)}...</p>` : ''}
+                    </div>
+                `;
+                
+                elements.paymentList.appendChild(item);
+            });
+        }
+        
+        // 切换监控
+        function toggleMonitoring() {
+            if (isMonitoring) {
+                // 停止监控
+                clearInterval(monitoringInterval);
+                isMonitoring = false;
+                elements.toggleMonitoring.textContent = '开始监控';
+                elements.toggleMonitoring.classList.remove('btn-danger');
+                elements.toggleMonitoring.classList.add('btn');
+                
+                logMessage('⏹️ 停止实时监控');
+            } else {
+                // 开始监控
+                isMonitoring = true;
+                elements.toggleMonitoring.textContent = '停止监控';
+                elements.toggleMonitoring.classList.remove('btn');
+                elements.toggleMonitoring.classList.add('btn-danger');
+                
+                // 每5秒刷新一次
+                monitoringInterval = setInterval(() => {
+                    refreshStats();
+                    refreshPaymentList();
+                    logMessage(`🔄 监控刷新 - ${new Date().toLocaleTimeString()}`);
+                }, 5000);
+                
+                logMessage('▶️ 开始实时监控');
+            }
+        }
+        
+        // 清除实时日志
+        function clearRealtimeLog() {
+            elements.realtimeLog.textContent = '';
+        }
+        
+        // 记录日志消息
+        function logMessage(message) {
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = `[${timestamp}] ${message}\n`;
+            elements.realtimeLog.textContent += logEntry;
+            
+            // 自动滚动到底部
+            elements.realtimeLog.scrollTop = elements.realtimeLog.scrollHeight;
+            
+            // 限制日志长度
+            const lines = elements.realtimeLog.textContent.split('\n');
+            if (lines.length > 100) {
+                elements.realtimeLog.textContent = lines.slice(-100).join('\n');
+            }
+        }
+        
+        // 处理支付状态变化事件
+        function handlePaymentStatusChanged(event) {
+            const { paymentId, status, payment } = event.detail;
+            logMessage(`🔔 支付状态变化: ${paymentId} -> ${status}`);
+            
+            // 自动刷新统计和列表
+            refreshStats();
+            refreshPaymentList();
+        }
+        
+        // 页面加载完成后的初始化
+        window.addEventListener('load', function() {
+            logMessage('🚀 Payment Handler Demo 已加载');
+            logMessage('💡 提示: 可以创建支付、生成二维码、更新状态等');
+        });
+    </script>
+</body>
+</html>

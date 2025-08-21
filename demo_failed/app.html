@@ -1,0 +1,911 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EVO Payment - Instant Crypto Payments</title>
+    
+    <!-- 响应式样式 -->
+    <link rel="stylesheet" href="./css/responsive-styles.css">
+    
+    <!-- 基础样式 -->
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Roboto', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        /* 导航栏样式 */
+        .navbar {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            padding: 15px 0;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        
+        .nav-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: white;
+            font-size: 20px;
+            font-weight: bold;
+        }
+        
+        .logo img {
+            height: 40px;
+        }
+        
+        .nav-links {
+            display: flex;
+            gap: 20px;
+        }
+        
+        .nav-links a {
+            color: white;
+            text-decoration: none;
+            padding: 8px 16px;
+            border-radius: 20px;
+            transition: background 0.3s;
+        }
+        
+        .nav-links a:hover,
+        .nav-links a.active {
+            background: rgba(255, 255, 255, 0.2);
+        }
+        
+        /* 卡片样式 */
+        .card {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            padding: 30px;
+            margin: 20px 0;
+            text-align: center;
+        }
+        
+        /* 按钮样式 */
+        .btn {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 25px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+            transition: all 0.3s ease;
+            margin: 5px;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+        }
+        
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .btn-secondary {
+            background: #6c757d;
+        }
+        
+        .btn-success {
+            background: #46C16D;
+        }
+        
+        /* 金额选择样式 */
+        .amount-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+        
+        .amount-option {
+            padding: 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s;
+            background: white;
+        }
+        
+        .amount-option:hover,
+        .amount-option.selected {
+            border-color: #667eea;
+            background: #f0f4ff;
+        }
+        
+        /* 代币选择样式 */
+        .token-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+        
+        .token-option {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s;
+            background: white;
+        }
+        
+        .token-option:hover,
+        .token-option.selected {
+            border-color: #667eea;
+            background: #f0f4ff;
+        }
+        
+        .token-icon {
+            width: 32px;
+            height: 32px;
+        }
+        
+        /* 二维码样式 */
+        .qr-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+        }
+        
+        .qr-code {
+            border: 10px solid white;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+        
+        /* 状态样式 */
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            padding: 15px;
+            border-radius: 10px;
+            margin: 20px 0;
+        }
+        
+        .status-pending {
+            background: #fff3cd;
+            color: #856404;
+        }
+        
+        .status-success {
+            background: #d4edda;
+            color: #155724;
+        }
+        
+        .status-error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        
+        /* 加载动画 */
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        /* 工具类 */
+        .hidden {
+            display: none !important;
+        }
+        
+        .text-center {
+            text-align: center;
+        }
+        
+        .mt-20 {
+            margin-top: 20px;
+        }
+        
+        .mb-20 {
+            margin-bottom: 20px;
+        }
+        
+        /* 响应式设计 */
+        @media (max-width: 768px) {
+            .container {
+                padding: 10px;
+            }
+            
+            .card {
+                padding: 20px;
+                margin: 10px 0;
+            }
+            
+            .nav-content {
+                flex-direction: column;
+                gap: 15px;
+            }
+            
+            .amount-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            
+            .token-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+    
+    <!-- 外部库 -->
+    <script src="https://cdn.jsdelivr.net/npm/web3@1.10.0/dist/web3.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+    
+    <!-- 配置文件 -->
+    <script src="./config.js"></script>
+</head>
+<body>
+    <!-- 导航栏 -->
+    <nav class="navbar">
+        <div class="container">
+            <div class="nav-content">
+                <div class="logo">
+                    <img src="./public/images/logo.png" alt="EVO Payment">
+                    <span>EVO Payment</span>
+                </div>
+                <button class="mobile-menu-toggle" id="mobileMenuToggle">
+                    ☰
+                </button>
+                <div class="nav-links" id="navLinks">
+                    <a href="#" data-route="/" class="active">Home</a>
+                    <a href="#" data-route="/payment">Payment</a>
+                    <button id="backButton" class="btn btn-secondary hidden">← Back</button>
+                </div>
+            </div>
+        </div>
+    </nav>
+    
+    <!-- 主要内容区域 -->
+    <main class="container">
+        <!-- 首页 -->
+        <div id="page-home" class="page">
+            <div class="card">
+                <h1>Welcome to EVO Payment</h1>
+                <p class="mb-20">Instant crypto payments on BNB Smart Chain</p>
+                
+                <!-- 钱包连接状态 -->
+                <div id="walletSection">
+                    <button id="connectWallet" class="btn">Connect Wallet</button>
+                    
+                    <div id="walletStatus" class="hidden mt-20">
+                        <div class="status-indicator status-success">
+                            <span>✓ Connected: <span id="walletAddress"></span></span>
+                        </div>
+                        <p>Network: <span id="networkName"></span></p>
+                        <button class="btn" data-route="/payment">Start Payment</button>
+                    </div>
+                </div>
+                
+                <!-- 状态消息 -->
+                <div id="statusMessages">
+                    <div id="errorMessage" class="status-indicator status-error hidden"></div>
+                    <div id="successMessage" class="status-indicator status-success hidden"></div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 支付页面 -->
+        <div id="page-payment" class="page hidden">
+            <div class="card">
+                <h2>Select Payment Details</h2>
+                
+                <!-- 金额选择 -->
+                <div class="payment-section">
+                    <h3>Select Amount (USD)</h3>
+                    <div class="amount-grid" id="amountGrid">
+                        <!-- 动态生成金额选项 -->
+                    </div>
+                    
+                    <div class="mt-20">
+                        <label for="customAmount">Custom Amount:</label>
+                        <input type="number" id="customAmount" placeholder="Enter amount" 
+                               style="padding: 10px; border: 1px solid #ddd; border-radius: 5px; margin-left: 10px;">
+                    </div>
+                </div>
+                
+                <!-- 代币选择 -->
+                <div class="payment-section mt-20">
+                    <h3>Select Token</h3>
+                    <div class="token-grid" id="tokenGrid">
+                        <!-- 动态生成代币选项 -->
+                    </div>
+                </div>
+                
+                <!-- 支付信息确认 -->
+                <div id="paymentSummary" class="mt-20 hidden">
+                    <h3>Payment Summary</h3>
+                    <p>Amount: <span id="summaryAmount"></span> USD</p>
+                    <p>Token: <span id="summaryToken"></span></p>
+                    <p>Receiver: <span id="summaryReceiver"></span></p>
+                    
+                    <button id="generateQRCode" class="btn mt-20">Generate QR Code</button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 二维码页面 -->
+        <div id="page-qrcode" class="page hidden">
+            <div class="card">
+                <h2>Scan QR Code to Pay</h2>
+                
+                <div class="qr-container">
+                    <canvas id="qrCodeCanvas" class="qr-code"></canvas>
+                    
+                    <div class="payment-info">
+                        <p><strong>Amount:</strong> <span id="qrAmount"></span></p>
+                        <p><strong>Token:</strong> <span id="qrToken"></span></p>
+                        <p><strong>Address:</strong> <span id="qrAddress"></span></p>
+                    </div>
+                    
+                    <div id="paymentStatus" class="status-indicator status-pending">
+                        <span class="loading"></span>
+                        <span>Waiting for payment...</span>
+                    </div>
+                    
+                    <div class="mt-20">
+                        <button id="checkPayment" class="btn">Check Payment Status</button>
+                        <button class="btn btn-secondary" data-route="/payment">Change Amount</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 成功页面 -->
+        <div id="page-success" class="page hidden">
+            <div class="card">
+                <h2>🎉 Payment Successful!</h2>
+                
+                <div id="paymentResult" class="mt-20">
+                    <!-- 动态显示支付结果 -->
+                </div>
+                
+                <div class="mt-20">
+                    <button class="btn" data-route="/">New Payment</button>
+                    <button id="viewTransaction" class="btn btn-secondary">View on BSCScan</button>
+                </div>
+            </div>
+        </div>
+    </main>
+    
+    <!-- 路由管理器 -->
+    <script src="./js/router.js"></script>
+    
+    <!-- PaymentHandler -->
+    <script src="./js/payment-handler.js"></script>
+    
+    <!-- BlockchainConnector -->
+    <script src="./js/blockchain-connector.js"></script>
+    
+    <!-- BlockchainMonitor -->
+    <script src="./js/blockchain-monitor.js"></script>
+    
+    <!-- PaymentUI -->
+    <script src="./js/payment-ui.js"></script>
+    
+    <!-- ErrorHandler -->
+    <script src="./js/error-handler.js"></script>
+    
+    <!-- UI Components -->
+    <script src="./js/ui-components.js"></script>
+    
+    <!-- 主应用脚本 -->
+    <script>
+        // 全局变量
+        let web3;
+        let userAccount;
+        let currentNetwork;
+        let selectedAmount = null;
+        let selectedToken = null;
+        let paymentData = null;
+        
+        // DOM 元素
+        const connectWalletBtn = document.getElementById('connectWallet');
+        const walletStatus = document.getElementById('walletStatus');
+        const walletAddress = document.getElementById('walletAddress');
+        const networkName = document.getElementById('networkName');
+        const errorMessage = document.getElementById('errorMessage');
+        const successMessage = document.getElementById('successMessage');
+        const backButton = document.getElementById('backButton');
+        
+        // 初始化应用
+        document.addEventListener('DOMContentLoaded', async function() {
+            console.log('EVO Payment 应用初始化...');
+            
+            // 检查 Web3 支持
+            if (typeof window.ethereum !== 'undefined') {
+                web3 = new Web3(window.ethereum);
+                
+                // 检查已连接账户
+                const accounts = await web3.eth.getAccounts();
+                if (accounts.length > 0) {
+                    await handleAccountsChanged(accounts);
+                }
+                
+                // 监听钱包事件
+                window.ethereum.on('accountsChanged', handleAccountsChanged);
+                window.ethereum.on('chainChanged', handleChainChanged);
+            } else {
+                showError('Please install MetaMask or another Web3 wallet');
+            }
+            
+            // 初始化页面内容
+            initializePaymentOptions();
+            
+            // 绑定事件
+            bindEvents();
+        });
+        
+        // 绑定事件
+        function bindEvents() {
+            // 连接钱包
+            connectWalletBtn.addEventListener('click', connectWallet);
+            
+            // 返回按钮
+            backButton.addEventListener('click', () => {
+                window.EVORouter.goBack();
+            });
+            
+            // 生成二维码
+            document.getElementById('generateQRCode').addEventListener('click', generatePaymentQR);
+            
+            // 检查支付状态
+            document.getElementById('checkPayment').addEventListener('click', checkPaymentStatus);
+            
+            // 金额选择
+            document.addEventListener('click', (e) => {
+                if (e.target.classList.contains('amount-option')) {
+                    selectAmount(e.target);
+                }
+            });
+            
+            // 代币选择
+            document.addEventListener('click', (e) => {
+                if (e.target.closest('.token-option')) {
+                    selectToken(e.target.closest('.token-option'));
+                }
+            });
+            
+            // 自定义金额输入
+            document.getElementById('customAmount').addEventListener('input', (e) => {
+                if (e.target.value) {
+                    clearAmountSelection();
+                    selectedAmount = parseFloat(e.target.value);
+                    updatePaymentSummary();
+                }
+            });
+        }
+        
+        // 连接钱包
+        async function connectWallet() {
+            try {
+                showLoading(connectWalletBtn, 'Connecting...');
+                
+                const accounts = await window.ethereum.request({
+                    method: 'eth_requestAccounts'
+                });
+                
+                await handleAccountsChanged(accounts);
+                
+            } catch (error) {
+                console.error('连接钱包失败:', error);
+                showError('Failed to connect wallet: ' + error.message);
+            } finally {
+                hideLoading(connectWalletBtn, 'Connect Wallet');
+            }
+        }
+        
+        // 处理账户变化
+        async function handleAccountsChanged(accounts) {
+            if (accounts.length === 0) {
+                userAccount = null;
+                walletStatus.classList.add('hidden');
+                connectWalletBtn.style.display = 'inline-block';
+            } else {
+                userAccount = accounts[0];
+                walletAddress.textContent = formatAddress(userAccount);
+                
+                const chainId = await web3.eth.getChainId();
+                await handleChainChanged(chainId);
+                
+                walletStatus.classList.remove('hidden');
+                connectWalletBtn.style.display = 'none';
+                
+                showSuccess('Wallet connected successfully!');
+            }
+        }
+        
+        // 处理网络变化
+        async function handleChainChanged(chainId) {
+            const chainIdNum = parseInt(chainId);
+            currentNetwork = chainIdNum;
+            
+            const config = window.EVO_CONFIG;
+            let networkInfo = null;
+            
+            if (chainIdNum === config.NETWORK_CONFIG.mainnet.chainId) {
+                networkInfo = config.NETWORK_CONFIG.mainnet;
+            } else if (chainIdNum === config.NETWORK_CONFIG.testnet.chainId) {
+                networkInfo = config.NETWORK_CONFIG.testnet;
+            }
+            
+            if (networkInfo) {
+                networkName.textContent = networkInfo.chainName;
+                hideError();
+            } else {
+                networkName.textContent = `Unsupported Network (${chainIdNum})`;
+                showError('Please switch to BNB Smart Chain network');
+            }
+        }
+        
+        // 初始化支付选项
+        function initializePaymentOptions() {
+            const config = window.EVO_CONFIG;
+            
+            // 初始化金额选项
+            const amountGrid = document.getElementById('amountGrid');
+            if (amountGrid && config) {
+                amountGrid.innerHTML = config.APP_CONFIG.ui.defaultAmounts.map(amount => `
+                    <div class="amount-option" data-amount="${amount}">
+                        <div style="font-size: 18px; font-weight: bold;">$${amount}</div>
+                    </div>
+                `).join('');
+            }
+            
+            // 初始化代币选项
+            const tokenGrid = document.getElementById('tokenGrid');
+            if (tokenGrid && config) {
+                const tokens = window.ConfigUtils.getSupportedTokens();
+                tokenGrid.innerHTML = tokens.map(token => `
+                    <div class="token-option" data-token="${token.symbol}">
+                        <img src="${token.icon}" alt="${token.name}" class="token-icon">
+                        <div>
+                            <div style="font-weight: bold;">${token.symbol}</div>
+                            <div style="font-size: 12px; color: #666;">${token.name}</div>
+                        </div>
+                    </div>
+                `).join('');
+            }
+        }
+        
+        // 选择金额
+        function selectAmount(element) {
+            clearAmountSelection();
+            element.classList.add('selected');
+            selectedAmount = parseFloat(element.dataset.amount);
+            document.getElementById('customAmount').value = '';
+            updatePaymentSummary();
+        }
+        
+        // 清除金额选择
+        function clearAmountSelection() {
+            document.querySelectorAll('.amount-option').forEach(el => {
+                el.classList.remove('selected');
+            });
+        }
+        
+        // 选择代币
+        function selectToken(element) {
+            document.querySelectorAll('.token-option').forEach(el => {
+                el.classList.remove('selected');
+            });
+            element.classList.add('selected');
+            selectedToken = element.dataset.token;
+            updatePaymentSummary();
+        }
+        
+        // 更新支付摘要
+        function updatePaymentSummary() {
+            const summaryDiv = document.getElementById('paymentSummary');
+            
+            if (selectedAmount && selectedToken) {
+                document.getElementById('summaryAmount').textContent = selectedAmount;
+                document.getElementById('summaryToken').textContent = selectedToken;
+                document.getElementById('summaryReceiver').textContent = 
+                    formatAddress(window.EVO_CONFIG.APP_CONFIG.payment.receiverAddress);
+                summaryDiv.classList.remove('hidden');
+            } else {
+                summaryDiv.classList.add('hidden');
+            }
+        }
+        
+        // 生成支付二维码
+        function generatePaymentQR() {
+            if (!selectedAmount || !selectedToken) {
+                showError('Please select amount and token');
+                return;
+            }
+            
+            if (!userAccount) {
+                showError('Please connect your wallet first');
+                return;
+            }
+            
+            // 保存支付数据
+            paymentData = {
+                amount: selectedAmount,
+                token: selectedToken,
+                address: window.EVO_CONFIG.APP_CONFIG.payment.receiverAddress,
+                timestamp: Date.now()
+            };
+            
+            window.EVORouter.setPaymentData(paymentData);
+            window.EVORouter.navigateTo('/qrcode');
+        }
+        
+        // 检查支付状态
+        async function checkPaymentStatus() {
+            if (!paymentData) return;
+            
+            try {
+                showLoading(document.getElementById('checkPayment'), 'Checking...');
+                
+                // 这里应该实现实际的区块链查询逻辑
+                // 目前使用模拟数据
+                setTimeout(() => {
+                    const success = Math.random() > 0.5; // 50% 成功率用于演示
+                    
+                    if (success) {
+                        const result = {
+                            status: 'completed',
+                            txHash: '0x' + Math.random().toString(16).substr(2, 64),
+                            amount: paymentData.amount,
+                            token: paymentData.token,
+                            timestamp: Date.now()
+                        };
+                        
+                        window.EVORouter.setPaymentResult(result);
+                        window.EVORouter.navigateTo('/success');
+                    } else {
+                        showError('Payment not found. Please try again.');
+                    }
+                    
+                    hideLoading(document.getElementById('checkPayment'), 'Check Payment Status');
+                }, 2000);
+                
+            } catch (error) {
+                console.error('检查支付状态失败:', error);
+                showError('Failed to check payment status');
+                hideLoading(document.getElementById('checkPayment'), 'Check Payment Status');
+            }
+        }
+        
+        // 工具函数
+        function formatAddress(address) {
+            return `${address.substring(0, 6)}...${address.substring(address.length - 4)}`;
+        }
+        
+        function showLoading(button, text) {
+            button.innerHTML = `<span class="loading"></span> ${text}`;
+            button.disabled = true;
+        }
+        
+        function hideLoading(button, text) {
+            button.innerHTML = text;
+            button.disabled = false;
+        }
+        
+        function showError(message) {
+            errorMessage.textContent = message;
+            errorMessage.classList.remove('hidden');
+            successMessage.classList.add('hidden');
+            setTimeout(hideError, 5000);
+        }
+        
+        function hideError() {
+            errorMessage.classList.add('hidden');
+        }
+        
+        function showSuccess(message) {
+            successMessage.textContent = message;
+            successMessage.classList.remove('hidden');
+            errorMessage.classList.add('hidden');
+            setTimeout(hideSuccess, 3000);
+        }
+        
+        function hideSuccess() {
+            successMessage.classList.add('hidden');
+        }
+        
+        // 扩展路由器功能
+        const originalInitializeQRCodePage = window.EVORouter.initializeQRCodePage;
+        window.EVORouter.initializeQRCodePage = function() {
+            const paymentData = this.getPaymentData();
+            if (!paymentData) {
+                showError('Payment information incomplete');
+                this.navigateTo('/payment');
+                return;
+            }
+            
+            // 更新页面信息
+            document.getElementById('qrAmount').textContent = `$${paymentData.amount}`;
+            document.getElementById('qrToken').textContent = paymentData.token;
+            document.getElementById('qrAddress').textContent = formatAddress(paymentData.address);
+            
+            // 生成二维码
+            const canvas = document.getElementById('qrCodeCanvas');
+            const paymentUrl = `ethereum:${paymentData.address}?value=${paymentData.amount}&token=${paymentData.token}`;
+            
+            QRCode.toCanvas(canvas, paymentUrl, {
+                width: 256,
+                margin: 2,
+                color: {
+                    dark: '#000000',
+                    light: '#FFFFFF'
+                }
+            }, (error) => {
+                if (error) {
+                    console.error('QR code generation failed:', error);
+                    showError('Failed to generate QR code');
+                }
+            });
+        };
+        
+        const originalInitializeSuccessPage = window.EVORouter.initializeSuccessPage;
+        window.EVORouter.initializeSuccessPage = function() {
+            const result = this.getPaymentResult();
+            if (result) {
+                const resultContainer = document.getElementById('paymentResult');
+                resultContainer.innerHTML = `
+                    <div class="payment-result">
+                        <p><strong>Transaction Hash:</strong> ${result.txHash}</p>
+                        <p><strong>Amount:</strong> $${result.amount}</p>
+                        <p><strong>Token:</strong> ${result.token}</p>
+                        <p><strong>Time:</strong> ${new Date(result.timestamp).toLocaleString()}</p>
+                    </div>
+                `;
+                
+                // 设置查看交易按钮
+                document.getElementById('viewTransaction').onclick = () => {
+                    const explorerUrl = `https://bscscan.com/tx/${result.txHash}`;
+                    window.open(explorerUrl, '_blank');
+                };
+            }
+        };
+        
+        // 移动端菜单功能
+        function initializeMobileMenu() {
+            const mobileMenuToggle = document.getElementById('mobileMenuToggle');
+            const navLinks = document.getElementById('navLinks');
+            
+            if (mobileMenuToggle && navLinks) {
+                mobileMenuToggle.addEventListener('click', function() {
+                    navLinks.classList.toggle('mobile-open');
+                    
+                    // 更新按钮图标
+                    if (navLinks.classList.contains('mobile-open')) {
+                        mobileMenuToggle.innerHTML = '✕';
+                    } else {
+                        mobileMenuToggle.innerHTML = '☰';
+                    }
+                });
+                
+                // 点击导航链接时关闭菜单
+                navLinks.addEventListener('click', function(e) {
+                    if (e.target.classList.contains('nav-link') || e.target.hasAttribute('data-route')) {
+                        navLinks.classList.remove('mobile-open');
+                        mobileMenuToggle.innerHTML = '☰';
+                    }
+                });
+                
+                // 点击外部区域关闭菜单
+                document.addEventListener('click', function(e) {
+                    if (!mobileMenuToggle.contains(e.target) && !navLinks.contains(e.target)) {
+                        navLinks.classList.remove('mobile-open');
+                        mobileMenuToggle.innerHTML = '☰';
+                    }
+                });
+            }
+        }
+        
+        // 响应式功能初始化
+        function initializeResponsiveFeatures() {
+            // 初始化移动端菜单
+            initializeMobileMenu();
+            
+            // 监听窗口大小变化
+            window.addEventListener('resize', function() {
+                const navLinks = document.getElementById('navLinks');
+                const mobileMenuToggle = document.getElementById('mobileMenuToggle');
+                
+                // 在桌面端自动显示导航链接
+                if (window.innerWidth > 767) {
+                    if (navLinks) navLinks.classList.remove('mobile-open');
+                    if (mobileMenuToggle) mobileMenuToggle.innerHTML = '☰';
+                }
+            });
+            
+            // 添加触摸友好的交互
+            document.querySelectorAll('.btn, .amount-option, .token-option').forEach(element => {
+                element.addEventListener('touchstart', function() {
+                    this.style.transform = 'scale(0.95)';
+                });
+                
+                element.addEventListener('touchend', function() {
+                    setTimeout(() => {
+                        this.style.transform = '';
+                    }, 150);
+                });
+            });
+            
+            // 优化滚动性能
+            let ticking = false;
+            function updateScrollPosition() {
+                const scrolled = window.pageYOffset;
+                const navbar = document.querySelector('.navbar');
+                
+                if (navbar) {
+                    if (scrolled > 50) {
+                        navbar.style.background = 'rgba(255, 255, 255, 0.95)';
+                        navbar.style.boxShadow = '0 2px 20px rgba(0,0,0,0.1)';
+                    } else {
+                        navbar.style.background = 'rgba(255, 255, 255, 0.1)';
+                        navbar.style.boxShadow = 'none';
+                    }
+                }
+                
+                ticking = false;
+            }
+            
+            window.addEventListener('scroll', function() {
+                if (!ticking) {
+                    requestAnimationFrame(updateScrollPosition);
+                    ticking = true;
+                }
+            });
+        }
+        
+        // 在 DOMContentLoaded 事件中初始化响应式功能
+        document.addEventListener('DOMContentLoaded', function() {
+            // 延迟初始化以确保所有组件都已加载
+            setTimeout(initializeResponsiveFeatures, 100);
+        });
+    </script>
+</body>
+</html>

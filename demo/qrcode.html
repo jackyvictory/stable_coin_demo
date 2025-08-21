@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EVO Payment - QR Code Payment</title>
+    <meta name="description" content="EVO Payment - Complete your crypto payment">
+    <link rel="stylesheet" href="css/main.css">
+    <link rel="stylesheet" href="css/qrcode.css">
+    <script src="config.js"></script>
+    <script src="lib/web3.min.js"></script>
+    <script src="js/blockchain.js"></script>
+    <script src="js/payment-handler.js"></script>
+</head>
+<body>
+    <!-- Header -->
+    <div class="qrcode-header">
+        <div class="qrcode-header-content">
+            <div class="logo-container">
+                <a href="index.html">
+                    <img src="./images/logo.png" alt="EVO Payment" class="header-logo">
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Container -->
+    <div class="qrcode-main-container">
+        <!-- QR Code Container -->
+        <div class="qrcode-container">
+            <div class="qrcode-card">
+                <!-- Payment Status -->
+                <div class="payment-status">
+                    <div class="status-indicator" id="status-indicator">
+                        <div class="status-dot"></div>
+                        <span class="status-text" id="status-text">Waiting for Payment</span>
+                    </div>
+                </div>
+
+                <!-- Payment Info -->
+                <div class="payment-info-section">
+                    <h2 class="payment-title">Scan QR Code to Pay</h2>
+                    <div class="payment-details">
+                        <div class="payment-item">
+                            <span class="payment-label">Item:</span>
+                            <span class="payment-value" id="qr-selected-item">Loading...</span>
+                        </div>
+                        <div class="payment-item">
+                            <span class="payment-label">Amount:</span>
+                            <span class="payment-value" id="qr-selected-amount">Loading...</span>
+                        </div>
+                        <div class="payment-item">
+                            <span class="payment-label">Payment Method:</span>
+                            <span class="payment-value" id="qr-payment-method">Loading...</span>
+                        </div>
+                        <div class="payment-item">
+                            <span class="payment-label">Network:</span>
+                            <span class="payment-value" id="qr-network">Loading...</span>
+                        </div>
+                        <div class="payment-item">
+                            <span class="payment-label">PayID:</span>
+                            <span class="payment-value" id="qr-payment-id">Loading...</span>
+                        </div>
+                        <div class="payment-item">
+                            <span class="payment-label">Time Remaining:</span>
+                            <span class="payment-value" id="qr-expiration-time">Loading...</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- QR Code Section -->
+                <div class="qrcode-section">
+                    <div class="qrcode-image-container">
+                        <img src="./images/wallet_qr.jpg" alt="Payment QR Code" class="qrcode-image">
+                    </div>
+                    
+                    <!-- Wallet Address -->
+                    <div class="wallet-address-section">
+                        <label class="address-label">Wallet Address:</label>
+                        <div class="address-container">
+                            <input type="text" class="address-input" id="wallet-address" 
+                                   value="0xe27577B0e3920cE35f100f66430de0108cb78a04" readonly>
+                            <button class="copy-button" id="copy-address-btn" onclick="copyAddress()">
+                                <span class="copy-text">Copy</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Payment Instructions -->
+                <div class="payment-instructions">
+                    <h3 class="instructions-title">Payment Instructions</h3>
+                    <ol class="instructions-list">
+                        <li>Open your crypto wallet app</li>
+                        <li>Scan the QR code above or copy the wallet address</li>
+                        <li>Send the exact amount shown above</li>
+                        <li>Make sure to select the correct network (BSC)</li>
+                        <li>Wait for transaction confirmation</li>
+                    </ol>
+                    
+                    <div class="warning-message">
+                        <strong>Important:</strong> Please send the exact amount to the correct address on BSC network. 
+                        Sending incorrect amounts or using wrong networks may result in loss of funds.
+                    </div>
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="action-buttons">
+                    <button class="back-button" onclick="goBack()">
+                        ← Back to Payment Selection
+                    </button>
+                    <button class="refresh-button" onclick="refreshStatus()">
+                        🔄 Refresh Status
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/qrcode.js"></script>
+</body>
+</html>

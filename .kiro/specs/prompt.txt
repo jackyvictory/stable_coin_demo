@@ -1,0 +1,35 @@
+1. 参考 https://donate.imsafu.com，像素级复刻一个网站出来，包括首页、以及点击 "Pay With imsafu" 按钮之后的所有页面与交互，但是将其中的 imsafu 相关的文字、图片等，全部替换成 EVO Payment（EVO Payment 的图片使用 demo/public/images/logo.png），实现一个支持稳定币支付的收银台页面
+实施思路：
+a. 在 imsafu 目录中，做个爬虫脚本，将 https://donate.imsafu.com 的首页、以及点击 "Pay With imsafu" 按钮之后的所有页面与交互，完整爬取下来，包括页面的 html/css/js，以及图片等静态资源，将爬下来的内容放到 imsafu 目录中
+b. 分析爬下来的内容，像素级复刻页面，将其中的 imsafu 相关的文字、图片等，全部替换成 EVO Payment，将代码保存到 demo 目录中
+c. 在展示二维码页面时，实现 BNB Smart Chain Mainnet 区块链的交易监听，在用户完成付款后，页面自动跳转到支付成功页面
+
+2. 在 imsafu 目录是从 https://donate.imsafu.com 爬下来的部分页面代码。使用 ./demo 作为项目的工作目录。参考 https://donate.imsafu.com 和爬下来的代码，复刻一个与 https://donate.imsafu.com 一样的 demo 出来 
+要求：
+a. 复刻首页（商品选购页面）https://donate.imsafu.com，包括页面样式、图片、文字
+b. 复刻收银台页面（点击首页的 Pay With imsafu 按钮后，跳转的页面）https://imsafu.com/payment_qrcode?payID=pay_01K36R5TXAX6EN1QGHHVKD36EJ&brand=IMSAFU.com&memo=Food+Donation+%28Peanut%29&redirect_url=https%3A%2F%2Fdonate.imsafu.com%2Fsuccess&currency=USD，包括页面样式、图片、文字、下拉框、点击下拉框后的弹窗
+c. 复刻选定 “Select Payment” 与 “Select Network” 之后，弹出的收银台页面 https://imsafu.com/payment_qrcode?payID=pay_01K36R5TXAX6EN1QGHHVKD36EJ&brand=IMSAFU.com&memo=Food+Donation+%28Peanut%29&redirect_url=https%3A%2F%2Fdonate.imsafu.com%2Fsuccess&currency=USD，二维码使用固定图片 /Users/zhangjacky/src/stable_coin_payment/demo/images/wallet_qr.jpg
+d. 展示二维码页面时，实现 BNB Smart Chain Mainnet 区块链的交易监听，在用户完成付款后，页面监听到同样金额的区块链钱包入账交易，自动跳转到支付成功页面
+e. 复刻的所有内容，将 imsafu 的文字替换为 EVO Payment，将 imsafu 的图片替换为 /Users/zhangjacky/src/stable_coin_payment/demo/images/logo.png
+
+
+
+
+【符合预期】二维码页面加载时，页面提示 Blockchain Connected，rpc调用返回成功
+【不符合预期】5秒后触发自动查询，调用了两次 rpc，第一次返回成功、第二次返回频率超限
+【不符合预期】之后就没有自动查询了
+【符合预期】手动点击按钮，触发一次 rpc 调用、返回成功，同时页面提示 Monitor Active - monitoring
+【符合预期】5秒后再次手动点击按钮，仍然触发一次 rpc 调用、返回成功，同时页面提示仍然是 Monitor Active - monitoring
+【不符合预期】然后等了几十秒，再次触发自动查询，调用了两次 rpc，第一次返回成功、第二次返回频率超限
+
+解决此 bug 的思路：将自动轮询的间隔时间改回 5秒，同时修改自动轮询的查询机制，相当于每隔 5秒手动点击按钮，这样是否也能查询到目标交易？
+
+
+
+手动刷新/自动轮询：
+
+第一次RPC调用：checkConnection() → getBlockNumber()
+区块号比较：检查是否有新区块
+固定延迟：如果需要查询交易，等待1.5秒
+第二次RPC调用：getLatestTokenTransfers() → getPastEvents()
+

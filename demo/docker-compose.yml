@@ -1,0 +1,36 @@
+version: '3.8'
+
+services:
+  evo-payment:
+    build: .
+    container_name: evo-payment-app
+    ports:
+      - "8080:80"
+      - "8443:443"
+    volumes:
+      # 挂载静态文件 (开发模式)
+      - .:/usr/share/nginx/html:ro
+      # 挂载 nginx 配置
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      # 挂载日志目录 (可选)
+      - ./logs:/var/log/nginx
+    restart: unless-stopped
+    environment:
+      - NGINX_HOST=localhost
+      - NGINX_PORT=80
+    networks:
+      - evo-payment-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+networks:
+  evo-payment-network:
+    driver: bridge
+
+volumes:
+  nginx-logs:
+    driver: local

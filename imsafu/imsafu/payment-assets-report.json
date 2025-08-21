@@ -1,0 +1,23 @@
+{
+  "timestamp": "2025-08-21T14:31:49.616Z",
+  "totalAssets": 16,
+  "downloadedAssets": 15,
+  "assets": [
+    "https://imsafu.com/_next/static/css/cee5ce5fa24a9806.css",
+    "https://imsafu.com/_next/static/chunks/polyfills-c67a75d1b6f99dc8.js",
+    "https://imsafu.com/_next/static/chunks/webpack-c7e5c780a0cbbf9e.js",
+    "https://imsafu.com/_next/static/chunks/framework-f8ae426690ef76a5.js",
+    "https://imsafu.com/_next/static/chunks/main-14307321c89cf4e3.js",
+    "https://imsafu.com/_next/static/chunks/pages/_app-dce0cb5857ebc500.js",
+    "https://imsafu.com/_next/static/chunks/1091-3ed49a37debab392.js",
+    "https://imsafu.com/_next/static/chunks/3817-677d32c310642610.js",
+    "https://imsafu.com/_next/static/chunks/4328-569530b5867bca85.js",
+    "https://imsafu.com/_next/static/chunks/2914-f680d28123fdaf8c.js",
+    "https://imsafu.com/_next/static/chunks/23-550c6991ab0e8f9f.js",
+    "https://imsafu.com/_next/static/chunks/pages/payment_qrcode-a4c2a5bb97a16441.js",
+    "https://imsafu.com/_next/static/Vvr0TlmFMdNeW6DVptzIk/_buildManifest.js",
+    "https://imsafu.com/_next/static/Vvr0TlmFMdNeW6DVptzIk/_ssgManifest.js",
+    "https://imsafu.com/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js",
+    "https://cryptologos.cc/logos/usd-coin-usdc-logo.png"
+  ]
+}

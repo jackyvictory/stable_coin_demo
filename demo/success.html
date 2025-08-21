@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EVO Payment - Payment Successful</title>
+    <meta name="description" content="EVO Payment - Payment completed successfully">
+    <link rel="stylesheet" href="css/main.css">
+    <link rel="stylesheet" href="css/success.css">
+    <script src="config.js"></script>
+    <script src="lib/web3.min.js"></script>
+    <script src="js/blockchain.js"></script>
+    <script src="js/payment-handler.js"></script>
+</head>
+<body>
+    <!-- Header -->
+    <div class="success-header">
+        <div class="success-header-content">
+            <div class="logo-container">
+                <a href="index.html">
+                    <img src="./images/logo.png" alt="EVO Payment" class="header-logo">
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Container -->
+    <div class="success-main-container">
+        <!-- Success Container -->
+        <div class="success-container">
+            <div class="success-card">
+                <!-- Success Icon -->
+                <div class="success-icon">
+                    <div class="checkmark-circle">
+                        <div class="checkmark">✓</div>
+                    </div>
+                </div>
+
+                <!-- Success Message -->
+                <div class="success-message">
+                    <h1 class="success-title">Payment Successful!</h1>
+                    <p class="success-subtitle">Thank you for your donation. Your payment has been confirmed.</p>
+                </div>
+
+                <!-- Payment Summary -->
+                <div class="payment-summary">
+                    <h3 class="summary-title">Payment Details</h3>
+                    <div class="summary-details">
+                        <div class="summary-item">
+                            <span class="summary-label">Item:</span>
+                            <span class="summary-value" id="success-item">Loading...</span>
+                        </div>
+                        <div class="summary-item">
+                            <span class="summary-label">Amount:</span>
+                            <span class="summary-value" id="success-amount">Loading...</span>
+                        </div>
+                        <div class="summary-item">
+                            <span class="summary-label">Payment Method:</span>
+                            <span class="summary-value" id="success-payment-method">Loading...</span>
+                        </div>
+                        <div class="summary-item">
+                            <span class="summary-label">Network:</span>
+                            <span class="summary-value" id="success-network">Loading...</span>
+                        </div>
+                        <div class="summary-item">
+                            <span class="summary-label">PayID:</span>
+                            <span class="summary-value" id="success-payment-id">Loading...</span>
+                        </div>
+                        <div class="summary-item">
+                            <span class="summary-label">Transaction Time:</span>
+                            <span class="summary-value" id="success-timestamp">Loading...</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="success-actions">
+                    <button class="new-payment-button" onclick="startNewPayment()">
+                        Make Another Donation
+                    </button>
+                    <button class="home-button" onclick="goHome()">
+                        Return to Homepage
+                    </button>
+                </div>
+
+                <!-- Additional Info -->
+                <div class="additional-info">
+                    <p class="info-text">
+                        Your donation helps provide food to those in need. 
+                        You will receive a confirmation email shortly.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/success.js"></script>
+</body>
+</html>

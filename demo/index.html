@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EVO Payment - instant crypto payments</title>
+    <meta name="description" content="EVO Payment - instant crypto payments">
+    <link rel="stylesheet" href="css/main.css">
+    <script src="config.js"></script>
+</head>
+<body>
+    <!-- Main Container -->
+    <div class="main-container">
+        <!-- Product Selection Container -->
+        <div class="product-container">
+            <!-- Product Grid -->
+            <div class="product-grid" role="radiogroup">
+                <!-- Peanut Product -->
+                <div class="product-item" data-product="peanut" data-price="0.25">
+                    <div class="radio-container">
+                        <input 
+                            class="radio-input" 
+                            id="product-peanut" 
+                            type="radio" 
+                            name="product-selection" 
+                            value="peanut"
+                            data-price="0.25"
+                            checked
+                        >
+                        <span class="radio-control"></span>
+                        <label class="product-label" for="product-peanut">
+                            <div class="product-content">
+                                <span class="product-emoji">🥜</span>
+                                <span class="product-price">$0.25</span>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Rice Product -->
+                <div class="product-item" data-product="rice" data-price="0.50">
+                    <div class="radio-container">
+                        <input 
+                            class="radio-input" 
+                            id="product-rice" 
+                            type="radio" 
+                            name="product-selection" 
+                            value="rice"
+                            data-price="0.50"
+                        >
+                        <span class="radio-control"></span>
+                        <label class="product-label" for="product-rice">
+                            <div class="product-content">
+                                <span class="product-emoji">🍚</span>
+                                <span class="product-price">$0.50</span>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Bread Product -->
+                <div class="product-item" data-product="bread" data-price="1.00">
+                    <div class="radio-container">
+                        <input 
+                            class="radio-input" 
+                            id="product-bread" 
+                            type="radio" 
+                            name="product-selection" 
+                            value="bread"
+                            data-price="1.00"
+                        >
+                        <span class="radio-control"></span>
+                        <label class="product-label" for="product-bread">
+                            <div class="product-content">
+                                <span class="product-emoji">🍞</span>
+                                <span class="product-price">$1.00</span>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Milk Product -->
+                <div class="product-item" data-product="milk" data-price="2.00">
+                    <div class="radio-container">
+                        <input 
+                            class="radio-input" 
+                            id="product-milk" 
+                            type="radio" 
+                            name="product-selection" 
+                            value="milk"
+                            data-price="2.00"
+                        >
+                        <span class="radio-control"></span>
+                        <label class="product-label" for="product-milk">
+                            <div class="product-content">
+                                <span class="product-emoji">🥛</span>
+                                <span class="product-price">$2.00</span>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Fruit Product -->
+                <div class="product-item" data-product="fruit" data-price="3.00">
+                    <div class="radio-container">
+                        <input 
+                            class="radio-input" 
+                            id="product-fruit" 
+                            type="radio" 
+                            name="product-selection" 
+                            value="fruit"
+                            data-price="3.00"
+                        >
+                        <span class="radio-control"></span>
+                        <label class="product-label" for="product-fruit">
+                            <div class="product-content">
+                                <span class="product-emoji">🍎</span>
+                                <span class="product-price">$3.00</span>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Donation and Payment Section -->
+            <div class="donation-payment-section">
+                <div class="avatar-container">
+                    <img alt="avatar" src="./images/avatar.png" class="avatar-image">
+                </div>
+                <div class="donation-payment-card">
+                    <div class="donation-text">
+                        <p class="donation-message">The payment you make donates food to the EVO Payment team.</p>
+                    </div>
+                    <button class="payment-button" id="pay-button" onclick="proceedToPayment()">
+                        Pay With EVO Payment
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/payment-handler.js"></script>
+    <script src="js/main.js"></script></script>
+</body>
+</html>

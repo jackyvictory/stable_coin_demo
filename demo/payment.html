@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EVO Payment - instant crypto payments</title>
+    <meta name="description" content="EVO Payment - instant crypto payments">
+    <link rel="stylesheet" href="css/main.css">
+    <link rel="stylesheet" href="css/payment.css">
+    <script src="config.js"></script>
+    <script src="js/payment-handler.js"></script>
+</head>
+<body>
+    <!-- Header -->
+    <div class="payment-header">
+        <div class="payment-header-content">
+            <div class="logo-container">
+                <a href="index.html">
+                    <img src="./images/logo.png" alt="EVO Payment" class="header-logo">
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Container -->
+    <div class="payment-main-container">
+        <!-- Payment Form Container -->
+        <div class="payment-form-container">
+            <div class="payment-form-card">
+                <!-- Payment Info -->
+                <div class="payment-info">
+                    <h2 class="payment-title">Complete Your Payment</h2>
+                    <div class="payment-details">
+                        <div class="payment-item">
+                            <span class="payment-label">Item:</span>
+                            <span class="payment-value" id="selected-item">Loading...</span>
+                        </div>
+                        <div class="payment-item">
+                            <span class="payment-label">Amount:</span>
+                            <span class="payment-value" id="selected-amount">Loading...</span>
+                        </div>
+                        <div class="payment-item">
+                            <span class="payment-label">PayID:</span>
+                            <span class="payment-value" id="payment-id">Loading...</span>
+                        </div>
+                        <div class="payment-item">
+                            <span class="payment-label">Expiration Time:</span>
+                            <span class="payment-value" id="expiration-time">Loading...</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Payment Method Selection -->
+                <div class="payment-section">
+                    <label class="section-label">Select Payment</label>
+                    <div class="dropdown-container">
+                        <button class="dropdown-button" id="payment-dropdown" onclick="togglePaymentDropdown()">
+                            <span class="dropdown-text" id="payment-selected">Choose payment method</span>
+                            <span class="dropdown-arrow">▼</span>
+                        </button>
+                        <div class="dropdown-menu" id="payment-menu">
+                            <div class="dropdown-item" onclick="selectPayment('USDC', 'USDC')">
+                                <span class="token-icon">$</span>
+                                <span class="token-name">USDC</span>
+                            </div>
+                            <div class="dropdown-item" onclick="selectPayment('USDC.e', 'USDC.e(Bridged)')">
+                                <span class="token-icon">$</span>
+                                <span class="token-name">USDC.e(Bridged)</span>
+                            </div>
+                            <div class="dropdown-item" onclick="selectPayment('USDT', 'USDT')">
+                                <span class="token-icon">₮</span>
+                                <span class="token-name">USDT</span>
+                            </div>
+                            <div class="dropdown-item" onclick="selectPayment('BUSD', 'BUSD')">
+                                <span class="token-icon">B</span>
+                                <span class="token-name">BUSD</span>
+                            </div>
+                            <div class="dropdown-item" onclick="selectPayment('TUSD', 'TUSD')">
+                                <span class="token-icon">T</span>
+                                <span class="token-name">TUSD</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Network Selection -->
+                <div class="payment-section">
+                    <label class="section-label">Select Network</label>
+                    <div class="dropdown-container">
+                        <button class="dropdown-button" id="network-dropdown" onclick="toggleNetworkDropdown()">
+                            <span class="dropdown-text" id="network-selected">Choose network</span>
+                            <span class="dropdown-arrow">▼</span>
+                        </button>
+                        <div class="dropdown-menu" id="network-menu">
+                            <div class="dropdown-item available" onclick="selectNetwork('BSC', 'BNB Smart Chain')">
+                                <div class="network-info">
+                                    <span class="network-main">BSC</span>
+                                    <span class="network-sub">BNB Smart Chain</span>
+                                </div>
+                                <div class="network-details">
+                                    <span class="confirmation-time">confirmation time ~20s</span>
+                                    <span class="network-fee">fee 0.159625 USDC ( = $ 0.16 )</span>
+                                </div>
+                            </div>
+                            <div class="dropdown-item unavailable">
+                                <div class="network-info">
+                                    <span class="network-main">Matic <span class="unavailable-badge">UNAVAILABLE</span></span>
+                                    <span class="network-sub">Polygon</span>
+                                </div>
+                                <div class="network-details">
+                                    <span class="confirmation-time">confirmation time ~30s</span>
+                                    <span class="network-fee">fee 0.001489 USDC ( = $ 0.01 )</span>
+                                </div>
+                            </div>
+                            <div class="dropdown-item unavailable">
+                                <div class="network-info">
+                                    <span class="network-main">ETH <span class="unavailable-badge">UNAVAILABLE</span></span>
+                                    <span class="network-sub">Ethereum</span>
+                                </div>
+                                <div class="network-details">
+                                    <span class="confirmation-time">confirmation time ~15m</span>
+                                    <span class="network-fee">fee N/A</span>
+                                </div>
+                            </div>
+                            <div class="dropdown-item unavailable">
+                                <div class="network-info">
+                                    <span class="network-main">SOL <span class="unavailable-badge">UNAVAILABLE</span></span>
+                                    <span class="network-sub">Solana</span>
+                                </div>
+                                <div class="network-details">
+                                    <span class="confirmation-time">confirmation time ~10s</span>
+                                    <span class="network-fee">fee N/A</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Continue Button -->
+                <button class="continue-button" id="continue-btn" onclick="proceedToQRCode()" disabled>
+                    Continue to Payment
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/payment.js"></script>
+</body>
+</html>

@@ -1,0 +1,22 @@
+{
+  "timestamp": "2025-08-21T14:27:51.760Z",
+  "pages": [
+    "index.html"
+  ],
+  "javascript": [
+    "981-aaa69dec343c0e61.js",
+    "_app-9702e1eee29ec092.js",
+    "_buildManifest.js",
+    "_ssgManifest.js",
+    "framework-114634acb84f8baa.js",
+    "index-5547e208de826f5e.js",
+    "main-290103c121be2090.js",
+    "polyfills-c67a75d1b6f99dc8.js",
+    "webpack-f0c0128a5a52f0cb.js"
+  ],
+  "images": [
+    "avatar.png",
+    "donation_bg.jpg"
+  ],
+  "assets": []
+}

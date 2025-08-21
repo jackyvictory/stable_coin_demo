@@ -1,0 +1,696 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EVO Payment - Complete UI Demo</title>
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Roboto', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        /* 导航栏 */
+        .navbar {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            padding: 15px 0;
+            margin-bottom: 30px;
+            border-radius: 15px;
+        }
+        
+        .nav-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 30px;
+        }
+        
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: white;
+            font-size: 20px;
+            font-weight: bold;
+        }
+        
+        .logo img {
+            height: 40px;
+        }
+        
+        .nav-links {
+            display: flex;
+            gap: 20px;
+        }
+        
+        .nav-links a {
+            color: white;
+            text-decoration: none;
+            padding: 8px 16px;
+            border-radius: 20px;
+            transition: background 0.3s;
+        }
+        
+        .nav-links a:hover,
+        .nav-links a.active {
+            background: rgba(255, 255, 255, 0.2);
+        }
+        
+        /* 卡片样式 */
+        .card {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            padding: 30px;
+            margin: 20px 0;
+            text-align: center;
+        }
+        
+        /* 按钮样式 */
+        .btn {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 25px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+            transition: all 0.3s ease;
+            margin: 5px;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+        }
+        
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .btn-secondary {
+            background: #6c757d;
+        }
+        
+        .btn-success {
+            background: #46C16D;
+        }
+        
+        .btn-danger {
+            background: #D7272B;
+        }
+        
+        /* 金额选择网格 */
+        .amount-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+        
+        .amount-option {
+            padding: 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s;
+            background: white;
+        }
+        
+        .amount-option:hover,
+        .amount-option.selected {
+            border-color: #667eea;
+            background: #f0f4ff;
+            transform: translateY(-2px);
+        }
+        
+        .amount-value {
+            font-size: 18px;
+            font-weight: bold;
+            color: #667eea;
+        }
+        
+        /* 代币选择网格 */
+        .token-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+        
+        .token-option {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s;
+            background: white;
+        }
+        
+        .token-option:hover,
+        .token-option.selected {
+            border-color: #667eea;
+            background: #f0f4ff;
+            transform: translateY(-2px);
+        }
+        
+        .token-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+        }
+        
+        .token-symbol {
+            font-weight: bold;
+            color: #333;
+        }
+        
+        .token-name {
+            font-size: 12px;
+            color: #666;
+        }
+        
+        /* 二维码样式 */
+        .qr-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+            margin: 30px 0;
+        }
+        
+        .qr-code {
+            border: 10px solid white;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+        
+        .payment-info {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: left;
+            width: 100%;
+            max-width: 400px;
+        }
+        
+        .payment-info p {
+            margin: 5px 0;
+            font-family: monospace;
+        }
+        
+        /* 状态指示器 */
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            padding: 15px;
+            border-radius: 10px;
+            margin: 20px 0;
+            font-weight: bold;
+        }
+        
+        .status-pending {
+            background: #fff3cd;
+            color: #856404;
+        }
+        
+        .status-monitoring {
+            background: #cce5ff;
+            color: #004085;
+        }
+        
+        .status-confirmed {
+            background: #d4edda;
+            color: #155724;
+        }
+        
+        .status-completed {
+            background: #d4edda;
+            color: #155724;
+        }
+        
+        .status-expired {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        
+        .status-failed {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        
+        /* 表单样式 */
+        .form-group {
+            margin-bottom: 20px;
+            text-align: left;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        
+        .form-group input {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 16px;
+        }
+        
+        /* 支付摘要 */
+        .payment-summary {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+            text-align: left;
+        }
+        
+        .payment-summary h3 {
+            margin-bottom: 15px;
+            color: #333;
+        }
+        
+        .payment-summary p {
+            margin: 8px 0;
+            font-size: 16px;
+        }
+        
+        /* 成功页面 */
+        .payment-success {
+            text-align: center;
+            padding: 30px;
+        }
+        
+        .payment-success h3 {
+            color: #46C16D;
+            margin-bottom: 20px;
+            font-size: 24px;
+        }
+        
+        .payment-details {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+            text-align: left;
+        }
+        
+        .payment-details p {
+            margin: 10px 0;
+            font-size: 16px;
+        }
+        
+        /* 加载动画 */
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        /* 工具类 */
+        .hidden {
+            display: none !important;
+        }
+        
+        .text-center {
+            text-align: center;
+        }
+        
+        .mt-20 {
+            margin-top: 20px;
+        }
+        
+        .mb-20 {
+            margin-bottom: 20px;
+        }
+        
+        /* 响应式设计 */
+        @media (max-width: 768px) {
+            .container {
+                padding: 10px;
+            }
+            
+            .card {
+                padding: 20px;
+                margin: 10px 0;
+            }
+            
+            .nav-content {
+                flex-direction: column;
+                gap: 15px;
+                padding: 0 20px;
+            }
+            
+            .amount-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            
+            .token-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+    
+    <!-- 外部库 -->
+    <script src="https://cdn.jsdelivr.net/npm/web3@1.10.0/dist/web3.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+    
+    <!-- 配置文件 -->
+    <script src="./config.js"></script>
+</head>
+<body>
+    <!-- 导航栏 -->
+    <nav class="navbar">
+        <div class="nav-content">
+            <div class="logo">
+                <img src="./public/images/logo.png" alt="EVO Payment">
+                <span>EVO Payment</span>
+            </div>
+            <div class="nav-links">
+                <a href="#" class="active" onclick="showStep('home')">Home</a>
+                <a href="#" onclick="showStep('payment')">Payment</a>
+                <button id="backButton" class="btn btn-secondary hidden">← Back</button>
+            </div>
+        </div>
+    </nav>
+    
+    <!-- 主要内容区域 -->
+    <main class="container">
+        <!-- 首页 -->
+        <div id="page-home" class="page">
+            <div class="card">
+                <h1>Welcome to EVO Payment</h1>
+                <p class="mb-20">Instant crypto payments on BNB Smart Chain</p>
+                
+                <!-- 钱包连接状态 -->
+                <div id="walletSection">
+                    <button id="connectWallet" class="btn">Connect Wallet</button>
+                    
+                    <div id="walletStatus" class="hidden mt-20">
+                        <div class="status-indicator status-confirmed">
+                            <span>✓ Connected: <span id="walletAddress"></span></span>
+                        </div>
+                        <p>Network: <span id="networkName"></span></p>
+                        <button class="btn" onclick="showStep('payment')">Start Payment</button>
+                    </div>
+                </div>
+                
+                <!-- 状态消息 -->
+                <div id="statusMessages">
+                    <div id="errorMessage" class="status-indicator status-failed hidden"></div>
+                    <div id="successMessage" class="status-indicator status-completed hidden"></div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 支付页面 -->
+        <div id="page-payment" class="page hidden">
+            <div class="card">
+                <h2>Select Payment Details</h2>
+                
+                <!-- 金额选择 -->
+                <div class="payment-section">
+                    <h3>Select Amount (USD)</h3>
+                    <div class="amount-grid" id="amountGrid">
+                        <!-- 动态生成金额选项 -->
+                    </div>
+                    
+                    <div class="form-group mt-20">
+                        <label for="customAmount">Custom Amount:</label>
+                        <input type="number" id="customAmount" placeholder="Enter amount" 
+                               min="0.01" step="0.01">
+                    </div>
+                </div>
+                
+                <!-- 代币选择 -->
+                <div class="payment-section mt-20">
+                    <h3>Select Token</h3>
+                    <div class="token-grid" id="tokenGrid">
+                        <!-- 动态生成代币选项 -->
+                    </div>
+                </div>
+                
+                <!-- 支付信息确认 -->
+                <div id="paymentSummary" class="payment-summary hidden">
+                    <h3>Payment Summary</h3>
+                    <p><strong>Amount:</strong> <span id="summaryAmount"></span></p>
+                    <p><strong>Token:</strong> <span id="summaryToken"></span></p>
+                    <p><strong>Receiver:</strong> <span id="summaryReceiver"></span></p>
+                    
+                    <button id="generateQRCode" class="btn mt-20">Generate QR Code</button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 二维码页面 -->
+        <div id="page-qrcode" class="page hidden">
+            <div class="card">
+                <h2>Scan QR Code to Pay</h2>
+                
+                <div id="qrContainer" class="qr-container hidden">
+                    <canvas id="qrCodeCanvas" class="qr-code"></canvas>
+                    
+                    <div class="payment-info">
+                        <p><strong>Amount:</strong> <span id="qrAmount"></span></p>
+                        <p><strong>Token:</strong> <span id="qrToken"></span></p>
+                        <p><strong>Address:</strong> <span id="qrAddress"></span></p>
+                    </div>
+                    
+                    <div id="paymentStatus" class="status-indicator status-pending">
+                        <span>⏳ Waiting for payment...</span>
+                    </div>
+                    
+                    <div class="mt-20">
+                        <button id="checkPayment" class="btn">Check Payment Status</button>
+                        <button class="btn btn-secondary" onclick="showStep('payment')">Change Amount</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 成功页面 -->
+        <div id="page-success" class="page hidden">
+            <div class="card">
+                <div id="paymentResult" class="payment-success">
+                    <h3>🎉 Payment Successful!</h3>
+                    <div class="payment-details">
+                        <p><strong>Amount:</strong> $10.00</p>
+                        <p><strong>Token:</strong> USDT</p>
+                        <p><strong>Transaction:</strong> 0x1234...abcd</p>
+                        <p><strong>Time:</strong> 2024-01-01 12:00:00</p>
+                    </div>
+                </div>
+                
+                <div class="mt-20">
+                    <button class="btn" onclick="resetAndGoHome()">New Payment</button>
+                    <button id="viewTransaction" class="btn btn-secondary">View on BSCScan</button>
+                </div>
+            </div>
+        </div>
+    </main>
+    
+    <!-- 依赖脚本 -->
+    <script src="./js/blockchain-connector.js"></script>
+    <script src="./js/payment-handler.js"></script>
+    <script src="./js/blockchain-monitor.js"></script>
+    <script src="./js/payment-ui.js"></script>
+    
+    <!-- 演示脚本 -->
+    <script>
+        // 全局变量
+        let currentStep = 'home';
+        
+        // 页面导航函数
+        function showStep(step) {
+            // 隐藏所有页面
+            document.querySelectorAll('[id^="page-"]').forEach(page => {
+                page.classList.add('hidden');
+            });
+            
+            // 显示目标页面
+            const targetPage = document.getElementById(`page-${step}`);
+            if (targetPage) {
+                targetPage.classList.remove('hidden');
+            }
+            
+            // 更新导航状态
+            document.querySelectorAll('.nav-links a').forEach(link => {
+                link.classList.remove('active');
+            });
+            
+            const activeLink = document.querySelector(`[onclick="showStep('${step}')"]`);
+            if (activeLink) {
+                activeLink.classList.add('active');
+            }
+            
+            // 显示/隐藏返回按钮
+            const backButton = document.getElementById('backButton');
+            if (step === 'home') {
+                backButton.classList.add('hidden');
+            } else {
+                backButton.classList.remove('hidden');
+            }
+            
+            currentStep = step;
+            
+            // 如果是支付页面，初始化支付选项
+            if (step === 'payment') {
+                window.PaymentUI.showPaymentForm();
+            }
+            
+            console.log(`导航到: ${step}`);
+        }
+        
+        // 重置并返回首页
+        function resetAndGoHome() {
+            window.PaymentUI.resetPaymentFlow();
+            showStep('home');
+        }
+        
+        // 返回按钮处理
+        document.getElementById('backButton').addEventListener('click', function() {
+            const stepOrder = ['home', 'payment', 'qrcode', 'success'];
+            const currentIndex = stepOrder.indexOf(currentStep);
+            
+            if (currentIndex > 0) {
+                showStep(stepOrder[currentIndex - 1]);
+            } else {
+                showStep('home');
+            }
+        });
+        
+        // 初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('EVO Payment UI Demo 初始化');
+            
+            // 显示首页
+            showStep('home');
+            
+            // 监听 PaymentUI 事件
+            window.addEventListener('paymentCompleted', function(event) {
+                console.log('支付完成，自动跳转到成功页面');
+                showStep('success');
+            });
+            
+            console.log('✅ UI Demo 初始化完成');
+        });
+        
+        // 演示功能：模拟支付完成
+        function simulatePaymentSuccess() {
+            // 更新成功页面内容
+            const paymentResult = document.getElementById('paymentResult');
+            paymentResult.innerHTML = `
+                <h3>🎉 Payment Successful!</h3>
+                <div class="payment-details">
+                    <p><strong>Amount:</strong> $25.00</p>
+                    <p><strong>Token:</strong> USDT</p>
+                    <p><strong>Transaction:</strong> 0x1234567890abcdef</p>
+                    <p><strong>Time:</strong> ${new Date().toLocaleString()}</p>
+                </div>
+            `;
+            
+            // 跳转到成功页面
+            showStep('success');
+            
+            // 显示成功消息
+            window.PaymentUI.showSuccess('Payment completed successfully!');
+        }
+        
+        // 演示功能：模拟支付监听
+        function simulatePaymentMonitoring() {
+            showStep('qrcode');
+            
+            // 显示二维码容器
+            const qrContainer = document.getElementById('qrContainer');
+            qrContainer.classList.remove('hidden');
+            
+            // 更新支付信息
+            document.getElementById('qrAmount').textContent = '$10.00';
+            document.getElementById('qrToken').textContent = 'USDT';
+            document.getElementById('qrAddress').textContent = '0x742d...d8b6';
+            
+            // 模拟状态变化
+            let step = 0;
+            const statuses = [
+                { status: 'monitoring', message: '👀 Monitoring blockchain...' },
+                { status: 'confirmed', message: '✅ Payment confirmed!' },
+                { status: 'completed', message: '🎉 Payment completed!' }
+            ];
+            
+            const interval = setInterval(() => {
+                if (step < statuses.length) {
+                    const { status, message } = statuses[step];
+                    const statusElement = document.getElementById('paymentStatus');
+                    statusElement.className = `status-indicator status-${status}`;
+                    statusElement.innerHTML = message;
+                    
+                    if (status === 'completed') {
+                        clearInterval(interval);
+                        setTimeout(() => {
+                            simulatePaymentSuccess();
+                        }, 2000);
+                    }
+                    
+                    step++;
+                }
+            }, 3000);
+        }
+        
+        // 添加演示按钮到首页
+        window.addEventListener('load', function() {
+            const homeCard = document.querySelector('#page-home .card');
+            const demoSection = document.createElement('div');
+            demoSection.className = 'mt-20';
+            demoSection.innerHTML = `
+                <h3>Demo Functions</h3>
+                <button class="btn btn-secondary" onclick="simulatePaymentMonitoring()">
+                    Simulate Payment Flow
+                </button>
+                <button class="btn btn-secondary" onclick="showStep('payment')">
+                    Go to Payment
+                </button>
+            `;
+            homeCard.appendChild(demoSection);
+        });
+    </script>
+</body>
+</html>
