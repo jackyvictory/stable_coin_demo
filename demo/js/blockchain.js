@@ -6,7 +6,17 @@ const BLOCKCHAIN_CONFIG = {
     network: {
         name: 'BNB Smart Chain',
         chainId: 56,
-        rpcUrl: 'https://bsc-dataseed1.binance.org/',
+        rpcUrl: 'http://bsc-dataseed1.binance.org/',
+        rpcUrls: [
+            'http://bsc-dataseed1.binance.org/',
+            'http://bsc-dataseed2.binance.org/',
+            'http://bsc-dataseed3.binance.org/',
+            'http://bsc-dataseed4.binance.org/',
+            'https://bsc-dataseed1.defibit.io/',
+            'https://bsc-dataseed2.defibit.io/',
+            'https://bsc-dataseed1.ninicoin.io/',
+            'https://bsc-dataseed2.ninicoin.io/'
+        ],
         blockExplorer: 'https://bscscan.com',
         nativeCurrency: {
             name: 'BNB',
@@ -60,7 +70,7 @@ const BLOCKCHAIN_CONFIG = {
     // 监听配置
     monitoring: {
         pollingInterval: 5000, // 5秒轮询一次 (模拟手动刷新)
-        confirmations: 3, // 需要3个确认
+        confirmations: 1, // 需要1个确认
         timeout: 30 * 60 * 1000, // 30分钟超时
         maxConcurrentChecks: 1, // 最大并发检查数
         retryDelay: 120000, // 遇到限制时等待2分钟再重试
@@ -115,6 +125,19 @@ class BlockchainManager {
         this.blockCheckCooldown = 3000; // 3秒内不重复检查区块号
         this.lastTransferQueryTime = 0; // 最后一次转账查询时间
         this.lastAnyRpcCallTime = 0; // 最后一次任何RPC调用的时间
+        
+        // RPC端点管理
+        this.currentRpcUrl = null;
+        this.currentRpcIndex = 0;
+        this.rpcFailureCount = new Map(); // 记录每个RPC端点的失败次数
+        this.lastRpcSwitchTime = 0;
+        this.rpcSwitchCooldown = 30000; // 30秒内不重复切换RPC
+        this.maxRpcFailures = 3; // 单个RPC端点最大失败次数
+        
+        // RPC健康检查
+        this.rpcHealthCheckInterval = null;
+        this.rpcHealthCheckFrequency = 60000; // 每60秒检查一次RPC健康状态
+        this.lastHealthCheckTime = 0;
     }
     
     // 智能延迟：根据上次RPC调用时间动态调整延迟
@@ -180,19 +203,17 @@ class BlockchainManager {
                 throw new Error('Web3 library not loaded');
             }
             
-            // 创建 Web3 实例
-            this.web3 = new Web3(BLOCKCHAIN_CONFIG.network.rpcUrl);
-            
-            // 测试连接
-            const blockNumber = await this.web3.eth.getBlockNumber();
-            this.lastBlockNumber = blockNumber;
-            this.lastBlockCheckTime = Date.now();
-            this.isConnected = true;
-            
-            console.log('Blockchain connected successfully. Current block:', blockNumber);
+            // 尝试连接到可用的RPC端点
+            const success = await this.connectToAvailableRPC();
+            if (!success) {
+                throw new Error('Failed to connect to any RPC endpoint');
+            }
             
             // 初始化代币合约
             this.initializeContracts();
+            
+            // 启动RPC健康检查
+            this.startRpcHealthCheck();
             
             return true;
         } catch (error) {
@@ -202,6 +223,292 @@ class BlockchainManager {
         } finally {
             this.initializing = false;
         }
+    }
+    
+    // 连接到可用的RPC端点
+    async connectToAvailableRPC(startFromIndex = 0) {
+        const rpcUrls = BLOCKCHAIN_CONFIG.network.rpcUrls || [BLOCKCHAIN_CONFIG.network.rpcUrl];
+        
+        // 从指定索引开始尝试，实现轮询
+        for (let attempt = 0; attempt < rpcUrls.length; attempt++) {
+            const i = (startFromIndex + attempt) % rpcUrls.length;
+            const rpcUrl = rpcUrls[i];
+            
+            // 检查该RPC是否已经失败太多次
+            const failureCount = this.rpcFailureCount.get(rpcUrl) || 0;
+            if (failureCount >= this.maxRpcFailures) {
+                console.log(`⏭️ Skipping ${rpcUrl} (failed ${failureCount} times)`);
+                continue;
+            }
+            
+            console.log(`🔗 Trying RPC endpoint ${i + 1}/${rpcUrls.length}: ${rpcUrl}`);
+            
+            try {
+                // 创建 Web3 实例
+                this.web3 = new Web3(rpcUrl);
+                
+                // 测试连接（设置较短的超时时间）
+                const blockNumber = await Promise.race([
+                    this.web3.eth.getBlockNumber(),
+                    new Promise((_, reject) => 
+                        setTimeout(() => reject(new Error('Connection timeout')), 5000)
+                    )
+                ]);
+                
+                this.lastBlockNumber = blockNumber;
+                this.lastBlockCheckTime = Date.now();
+                this.isConnected = true;
+                this.currentRpcUrl = rpcUrl;
+                this.currentRpcIndex = i;
+                
+                // 重置该RPC的失败计数
+                this.rpcFailureCount.set(rpcUrl, 0);
+                
+                console.log(`✅ Connected to ${rpcUrl}. Current block: ${blockNumber}`);
+                return true;
+                
+            } catch (error) {
+                console.log(`❌ Failed to connect to ${rpcUrl}: ${error.message}`);
+                
+                // 增加失败计数
+                this.rpcFailureCount.set(rpcUrl, failureCount + 1);
+                
+                // 如果是SSL证书错误，记录但继续尝试下一个
+                if (error.message.includes('certificate') || error.message.includes('SSL') || error.message.includes('TLS')) {
+                    console.log(`🔒 SSL/TLS certificate issue with ${rpcUrl}, trying next endpoint...`);
+                }
+                
+                continue;
+            }
+        }
+        
+        console.error('❌ All RPC endpoints failed or exceeded failure limit');
+        
+        // 如果所有RPC都失败了，重置失败计数给它们第二次机会
+        if (this.rpcFailureCount.size > 0) {
+            console.log('🔄 Resetting RPC failure counts for retry...');
+            this.rpcFailureCount.clear();
+        }
+        
+        return false;
+    }
+    
+    // 切换到下一个可用的RPC端点
+    async switchToNextRPC() {
+        const now = Date.now();
+        
+        // 检查切换冷却期
+        if (now - this.lastRpcSwitchTime < this.rpcSwitchCooldown) {
+            console.log(`🕐 RPC switch in cooldown (${Math.round((this.rpcSwitchCooldown - (now - this.lastRpcSwitchTime)) / 1000)}s remaining)`);
+            return false;
+        }
+        
+        console.log('🔄 Switching to next available RPC endpoint...');
+        this.lastRpcSwitchTime = now;
+        
+        // 标记当前RPC为失败
+        if (this.currentRpcUrl) {
+            const currentFailures = this.rpcFailureCount.get(this.currentRpcUrl) || 0;
+            this.rpcFailureCount.set(this.currentRpcUrl, currentFailures + 1);
+            console.log(`📊 Marked ${this.currentRpcUrl} as failed (${currentFailures + 1} failures)`);
+        }
+        
+        // 断开当前连接
+        this.isConnected = false;
+        this.web3 = null;
+        
+        // 尝试连接到下一个RPC端点
+        const nextIndex = (this.currentRpcIndex + 1) % (BLOCKCHAIN_CONFIG.network.rpcUrls?.length || 1);
+        const success = await this.connectToAvailableRPC(nextIndex);
+        
+        if (success) {
+            console.log(`✅ Successfully switched to new RPC endpoint`);
+            // 重新初始化合约
+            this.initializeContracts();
+            return true;
+        } else {
+            console.error('❌ Failed to switch to any available RPC endpoint');
+            return false;
+        }
+    }
+    
+    // 处理RPC调用错误，自动切换端点
+    async handleRpcError(error, operation = 'unknown') {
+        console.error(`🚨 RPC Error in ${operation}:`, error.message);
+        
+        // 检查是否是需要切换RPC的错误类型
+        const shouldSwitch = error.message.includes('rate limit') ||
+                           error.message.includes('limit exceeded') ||
+                           error.message.includes('timeout') ||
+                           error.message.includes('network error') ||
+                           error.message.includes('connection') ||
+                           error.message.includes('ECONNRESET') ||
+                           error.message.includes('ETIMEDOUT');
+        
+        if (shouldSwitch) {
+            console.log(`🔄 Error suggests RPC issue, attempting to switch endpoint...`);
+            const switched = await this.switchToNextRPC();
+            
+            if (switched) {
+                console.log(`✅ RPC switched successfully, operation can be retried`);
+                return { switched: true, canRetry: true };
+            } else {
+                console.error(`❌ Failed to switch RPC, operation cannot be retried`);
+                return { switched: false, canRetry: false };
+            }
+        }
+        
+        return { switched: false, canRetry: false };
+    }
+    
+    // 执行原始RPC调用，支持自动切换端点
+    async makeRpcCall(method, params, id = 1) {
+        if (!this.currentRpcUrl) {
+            throw new Error('No RPC endpoint available');
+        }
+        
+        try {
+            const response = await fetch(this.currentRpcUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    jsonrpc: '2.0',
+                    method: method,
+                    params: params,
+                    id: id
+                })
+            });
+            
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+            
+            const data = await response.json();
+            
+            if (data.error) {
+                throw new Error(`RPC Error: ${data.error.message || 'Unknown error'}`);
+            }
+            
+            return data.result;
+            
+        } catch (error) {
+            console.error(`Raw RPC call failed (${method}):`, error.message);
+            
+            // 尝试自动切换RPC端点
+            const errorResult = await this.handleRpcError(error, `makeRpcCall-${method}`);
+            
+            if (errorResult.switched && errorResult.canRetry) {
+                // RPC已切换，重试一次
+                console.log(`🔄 Retrying ${method} after RPC switch...`);
+                try {
+                    const response = await fetch(this.currentRpcUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            jsonrpc: '2.0',
+                            method: method,
+                            params: params,
+                            id: id
+                        })
+                    });
+                    
+                    if (!response.ok) {
+                        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                    }
+                    
+                    const data = await response.json();
+                    
+                    if (data.error) {
+                        throw new Error(`RPC Error: ${data.error.message || 'Unknown error'}`);
+                    }
+                    
+                    return data.result;
+                    
+                } catch (retryError) {
+                    console.error(`Retry after RPC switch also failed (${method}):`, retryError);
+                    throw retryError;
+                }
+            } else {
+                throw error;
+            }
+        }
+    }
+    
+    // 开始RPC健康检查
+    startRpcHealthCheck() {
+        if (this.rpcHealthCheckInterval) {
+            clearInterval(this.rpcHealthCheckInterval);
+        }
+        
+        console.log('🏥 Starting RPC health check...');
+        
+        this.rpcHealthCheckInterval = setInterval(async () => {
+            try {
+                if (!this.isConnected || !this.web3) {
+                    console.log('🏥 [HEALTH-CHECK] Not connected, skipping health check');
+                    return;
+                }
+                
+                const now = Date.now();
+                console.log(`🏥 [HEALTH-CHECK] Checking RPC health for ${this.currentRpcUrl}`);
+                
+                // 简单的健康检查：获取最新区块号
+                const startTime = Date.now();
+                const blockNumber = await Promise.race([
+                    this.web3.eth.getBlockNumber(),
+                    new Promise((_, reject) => 
+                        setTimeout(() => reject(new Error('Health check timeout')), 10000)
+                    )
+                ]);
+                
+                const responseTime = Date.now() - startTime;
+                console.log(`🏥 [HEALTH-CHECK] ✅ RPC healthy - Block: ${blockNumber}, Response time: ${responseTime}ms`);
+                
+                // 更新最后健康检查时间
+                this.lastHealthCheckTime = now;
+                
+                // 重置该RPC的失败计数（如果健康检查成功）
+                if (this.currentRpcUrl) {
+                    this.rpcFailureCount.set(this.currentRpcUrl, 0);
+                }
+                
+            } catch (error) {
+                console.error(`🏥 [HEALTH-CHECK] ❌ RPC health check failed:`, error.message);
+                
+                // 健康检查失败，尝试切换RPC
+                const errorResult = await this.handleRpcError(error, 'healthCheck');
+                
+                if (errorResult.switched) {
+                    console.log('🏥 [HEALTH-CHECK] ✅ Switched to healthier RPC endpoint');
+                } else {
+                    console.error('🏥 [HEALTH-CHECK] ❌ Failed to find healthy RPC endpoint');
+                }
+            }
+        }, this.rpcHealthCheckFrequency);
+    }
+    
+    // 停止RPC健康检查
+    stopRpcHealthCheck() {
+        if (this.rpcHealthCheckInterval) {
+            console.log('🏥 Stopping RPC health check...');
+            clearInterval(this.rpcHealthCheckInterval);
+            this.rpcHealthCheckInterval = null;
+        }
+    }
+    
+    // 获取RPC状态信息
+    getRpcStatus() {
+        const rpcUrls = BLOCKCHAIN_CONFIG.network.rpcUrls || [BLOCKCHAIN_CONFIG.network.rpcUrl];
+        
+        return {
+            currentRpc: this.currentRpcUrl,
+            currentIndex: this.currentRpcIndex,
+            isConnected: this.isConnected,
+            totalEndpoints: rpcUrls.length,
+            failureCounts: Object.fromEntries(this.rpcFailureCount),
+            lastHealthCheck: this.lastHealthCheckTime,
+            lastSwitch: this.lastRpcSwitchTime
+        };
     }
     
     // 初始化代币合约
@@ -240,12 +547,47 @@ class BlockchainManager {
             
             console.log(`🌐 [RPC-CALL] checkConnection() calling getBlockNumber...`);
             this.lastAnyRpcCallTime = Date.now();
-            const blockNumber = await this.web3.eth.getBlockNumber();
-            console.log(`🌐 [RPC-CALL] checkConnection() got block number: ${blockNumber}`);
-            this.lastBlockNumber = blockNumber;
-            this.lastBlockCheckTime = now;
-            this.isConnected = true;
-            return true;
+            
+            try {
+                const blockNumber = await Promise.race([
+                    this.web3.eth.getBlockNumber(),
+                    new Promise((_, reject) => 
+                        setTimeout(() => reject(new Error('Connection timeout')), 8000)
+                    )
+                ]);
+                
+                console.log(`🌐 [RPC-CALL] checkConnection() got block number: ${blockNumber}`);
+                this.lastBlockNumber = blockNumber;
+                this.lastBlockCheckTime = now;
+                this.isConnected = true;
+                return true;
+                
+            } catch (rpcError) {
+                console.error('RPC call failed in checkConnection:', rpcError);
+                
+                // 尝试自动切换RPC端点
+                const errorResult = await this.handleRpcError(rpcError, 'checkConnection');
+                
+                if (errorResult.switched && errorResult.canRetry) {
+                    // RPC已切换，重试一次
+                    console.log('🔄 Retrying checkConnection after RPC switch...');
+                    try {
+                        const blockNumber = await this.web3.eth.getBlockNumber();
+                        console.log(`✅ Retry successful, block number: ${blockNumber}`);
+                        this.lastBlockNumber = blockNumber;
+                        this.lastBlockCheckTime = now;
+                        this.isConnected = true;
+                        return true;
+                    } catch (retryError) {
+                        console.error('Retry after RPC switch also failed:', retryError);
+                        this.isConnected = false;
+                        return false;
+                    }
+                } else {
+                    this.isConnected = false;
+                    return false;
+                }
+            }
             
         } catch (error) {
             console.error('Connection check failed:', error);
@@ -286,22 +628,65 @@ class BlockchainManager {
                 throw new Error('Blockchain not connected');
             }
             
-            const transaction = await this.web3.eth.getTransaction(txHash);
-            const receipt = await this.web3.eth.getTransactionReceipt(txHash);
+            // 验证和格式化交易哈希
+            if (!txHash.startsWith('0x')) {
+                txHash = '0x' + txHash;
+            }
             
-            return {
-                transaction,
-                receipt,
-                confirmations: this.lastBlockNumber - receipt.blockNumber
-            };
+            // 验证哈希长度
+            if (txHash.length !== 66) {
+                throw new Error(`Invalid transaction hash length: ${txHash.length}, expected 66 characters`);
+            }
+            
+            console.log(`🌐 [WEB3-CALL] getTransaction with hash: ${txHash} (length: ${txHash.length})`);
+            
+            try {
+                const transaction = await this.web3.eth.getTransaction(txHash);
+                
+                console.log(`🌐 [WEB3-CALL] getTransactionReceipt with hash: ${txHash} (length: ${txHash.length})`);
+                const receipt = await this.web3.eth.getTransactionReceipt(txHash);
+                
+                return {
+                    transaction,
+                    receipt,
+                    confirmations: this.lastBlockNumber - receipt.blockNumber
+                };
+                
+            } catch (rpcError) {
+                console.error('RPC call failed in getTransaction:', rpcError);
+                
+                // 尝试自动切换RPC端点
+                const errorResult = await this.handleRpcError(rpcError, 'getTransaction');
+                
+                if (errorResult.switched && errorResult.canRetry) {
+                    // RPC已切换，重试一次
+                    console.log('🔄 Retrying getTransaction after RPC switch...');
+                    try {
+                        const transaction = await this.web3.eth.getTransaction(txHash);
+                        const receipt = await this.web3.eth.getTransactionReceipt(txHash);
+                        
+                        return {
+                            transaction,
+                            receipt,
+                            confirmations: this.lastBlockNumber - receipt.blockNumber
+                        };
+                    } catch (retryError) {
+                        console.error('Retry after RPC switch also failed:', retryError);
+                        return null;
+                    }
+                } else {
+                    return null;
+                }
+            }
+            
         } catch (error) {
             console.error('Failed to get transaction:', error);
             return null;
         }
     }
     
-    // 获取最新的代币转账交易
-    async getLatestTokenTransfers(tokenSymbol, toAddress, fromBlock = 'latest') {
+    // 获取最新的代币转账交易 - 使用替代方法避免 getPastEvents 限制
+    async getLatestTokenTransfers(tokenSymbol, toAddress, fromBlock = 'latest', toBlock = null) {
         try {
             if (!this.isConnected || !this.contracts[tokenSymbol]) {
                 throw new Error(`Contract not available for ${tokenSymbol}`);
@@ -309,53 +694,221 @@ class BlockchainManager {
             
             const contract = this.contracts[tokenSymbol];
             
-            // 计算查询范围 - 使用极小的区块范围以减少RPC负载
+            // 计算查询范围
             let queryFromBlock;
+            let queryToBlock;
+            
             if (fromBlock === 'latest') {
-                // 只查询最近5个区块，进一步减少负载
-                queryFromBlock = Math.max(1, this.lastBlockNumber - 5);
+                queryFromBlock = Math.max(1, this.lastBlockNumber - 1); // 只查询最近1个区块
+                queryToBlock = this.lastBlockNumber;
             } else {
                 queryFromBlock = fromBlock;
+                queryToBlock = toBlock || this.lastBlockNumber;
             }
             
-            console.log(`🌐 [RPC-CALL] Getting token transfers for ${tokenSymbol} from block ${queryFromBlock} to latest...`);
+            // 限制查询范围，避免查询过多区块
+            const maxBlockRange = 100; // 最多查询100个区块
+            if (queryToBlock - queryFromBlock > maxBlockRange) {
+                console.log(`Block range too large (${queryToBlock - queryFromBlock}), limiting to last ${maxBlockRange} blocks`);
+                queryFromBlock = queryToBlock - maxBlockRange;
+            }
+            
+            console.log(`🌐 [ALTERNATIVE-METHOD] Scanning blocks ${queryFromBlock} to ${queryToBlock} for ${tokenSymbol} transfers...`);
             
             // 记录RPC调用时间
             const queryStartTime = Date.now();
             this.lastTransferQueryTime = queryStartTime;
             this.lastAnyRpcCallTime = queryStartTime;
-            console.log(`🌐 [RPC-CALL] Transfer query started at ${queryStartTime}`);
             
-            // 获取 Transfer 事件
-            const events = await contract.getPastEvents('Transfer', {
-                filter: {
-                    to: toAddress
-                },
-                fromBlock: queryFromBlock,
-                toBlock: 'latest'
-            });
+            const transfers = [];
             
-            console.log(`🌐 [RPC-CALL] Found ${events.length} transfer events for ${tokenSymbol} in blocks ${queryFromBlock}-${this.lastBlockNumber}`);
-            
-            return events.map(event => ({
-                transactionHash: event.transactionHash,
-                blockNumber: event.blockNumber,
-                from: event.returnValues.from,
-                to: event.returnValues.to,
-                value: event.returnValues.value,
-                formattedValue: this.web3.utils.fromWei(event.returnValues.value, 'ether')
-            }));
-            
-        } catch (error) {
-            console.error(`Failed to get token transfers for ${tokenSymbol}:`, error);
-            
-            // 如果是限制错误，抛出特殊错误以便上层处理
-            if (error.message && (error.message.includes('limit exceeded') || error.message.includes('rate limit'))) {
-                console.log(`🚫 Rate limit detected in getLatestTokenTransfers, throwing RATE_LIMIT_EXCEEDED`);
-                throw new Error('RATE_LIMIT_EXCEEDED');
+            // 扫描指定范围内的区块 - 使用原始RPC避免大数值错误
+            for (let blockNum = queryFromBlock; blockNum <= queryToBlock; blockNum++) {
+                console.log(`🔍 [BLOCK-SCAN] Scanning block ${blockNum}...`);
+                
+                try {
+                    // 使用支持自动切换的RPC调用获取区块信息
+                    const block = await this.makeRpcCall(
+                        'eth_getBlockByNumber',
+                        [`0x${blockNum.toString(16)}`, true], // true = 包含完整交易信息
+                        blockNum
+                    );
+                    
+                    if (!block) {
+                        console.log(`Failed to get block ${blockNum}: No result`);
+                        continue;
+                    }
+                    if (!block || !block.transactions) {
+                        console.log(`Block ${blockNum} has no transactions`);
+                        continue;
+                    }
+                    
+                    console.log(`Block ${blockNum} has ${block.transactions.length} transactions`);
+                    
+                    // 扫描区块中的交易 - 使用安全的数值处理
+                    for (let i = 0; i < block.transactions.length; i++) {
+                        try {
+                            const tx = block.transactions[i];
+                            
+                            // 安全地检查交易对象，避免大数值问题
+                            const txTo = tx.to ? tx.to.toString() : null;
+                            let txHash = tx.hash ? tx.hash.toString() : null;
+                            
+                            if (!txTo || !txHash) {
+                                continue; // 跳过无效交易
+                            }
+                            
+                            // 验证和格式化交易哈希
+                            if (!txHash.startsWith('0x')) {
+                                console.log(`Adding 0x prefix to hash: ${txHash}`);
+                                txHash = '0x' + txHash;
+                            }
+                            
+                            // 验证哈希长度（应该是 66 字符：0x + 64 字符）
+                            if (txHash.length !== 66) {
+                                console.log(`Invalid transaction hash length: ${txHash.length} (expected 66), hash: ${txHash}, skipping transaction`);
+                                continue;
+                            }
+                            
+                            // 检查是否是发送到代币合约的交易
+                            if (txTo.toLowerCase() === contract.options.address.toLowerCase()) {
+                                console.log(`Found token contract transaction: ${txHash}`);
+                                
+                                try {
+                                    // 使用支持自动切换的RPC调用获取交易收据
+                                    console.log(`🌐 [RPC-CALL] eth_getTransactionReceipt with hash: ${txHash} (length: ${txHash.length})`);
+                                    
+                                    const receipt = await this.makeRpcCall(
+                                        'eth_getTransactionReceipt',
+                                        [txHash],
+                                        1000 + i
+                                    );
+                                    
+                                    if (!receipt) {
+                                        console.log(`Failed to get receipt for ${txHash}: No result`);
+                                        continue;
+                                    }
+                                    if (receipt && receipt.logs && receipt.logs.length > 0) {
+                                        // Transfer 事件的 topic
+                                        const transferTopic = '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef';
+                                        
+                                        for (const log of receipt.logs) {
+                                            if (log.topics && log.topics[0] === transferTopic && log.topics.length >= 3) {
+                                                try {
+                                                    // 解析 Transfer 事件 - 安全处理地址
+                                                    // topics[1] 和 topics[2] 是32字节的哈希，地址在最后20字节
+                                                    const fromAddress = '0x' + log.topics[1].slice(-40);
+                                                    const toAddressFromLog = '0x' + log.topics[2].slice(-40);
+                                                    
+                                                    // 检查是否是发送到目标地址的转账
+                                                    if (toAddressFromLog.toLowerCase() === toAddress.toLowerCase()) {
+                                                        // 安全地处理大数值
+                                                        const valueHex = log.data;
+                                                        let formattedValue;
+                                                        
+                                                        try {
+                                                            const valueBigInt = BigInt(valueHex);
+                                                            // 根据代币类型使用正确的小数位数
+                                                            const decimals = tokenSymbol === 'USDC' ? 6 : 18;
+                                                            const divisor = BigInt(10 ** decimals);
+                                                            const valueNumber = Number(valueBigInt) / Number(divisor);
+                                                            formattedValue = valueNumber.toString();
+                                                        } catch (bigIntError) {
+                                                            console.log(`Failed to parse amount with BigInt: ${bigIntError.message}`);
+                                                            formattedValue = '[Cannot parse - too large]';
+                                                        }
+                                                        
+                                                        console.log(`✅ Found transfer to target address: ${formattedValue} ${tokenSymbol}`);
+                                                        
+                                                        transfers.push({
+                                                            transactionHash: txHash,
+                                                            blockNumber: parseInt(block.number, 16),
+                                                            from: fromAddress,
+                                                            to: toAddressFromLog,
+                                                            value: valueHex,
+                                                            formattedValue: formattedValue
+                                                        });
+                                                    }
+                                                } catch (parseError) {
+                                                    console.log(`Failed to parse transfer event: ${parseError.message}`);
+                                                }
+                                            }
+                                        }
+                                    }
+                                } catch (receiptError) {
+                                    console.log(`Failed to get receipt for ${txHash}: ${receiptError.message}`);
+                                }
+                            }
+                        } catch (txError) {
+                            console.log(`Failed to process transaction: ${txError.message}`);
+                            // 继续处理下一个交易
+                            continue;
+                        }
+                    }
+                } catch (blockError) {
+                    console.log(`Failed to scan block ${blockNum}: ${blockError.message}`);
+                }
             }
             
-            return [];
+            console.log(`🌐 [ALTERNATIVE-METHOD] Found ${transfers.length} transfers using block scanning method`);
+            
+            return transfers;
+            
+        } catch (error) {
+            console.error(`Failed to get token transfers for ${tokenSymbol} using alternative method:`, error);
+            
+            // 如果替代方法也失败，尝试回退到原方法（可能仍会遇到限制）
+            console.log(`🔄 [FALLBACK] Attempting original getPastEvents method as fallback...`);
+            
+            try {
+                const contract = this.contracts[tokenSymbol];
+                const queryFromBlock = fromBlock === 'latest' ? Math.max(1, this.lastBlockNumber - 1) : fromBlock;
+                const toBlock = this.lastBlockNumber;
+                
+                const events = await contract.getPastEvents('Transfer', {
+                    filter: {
+                        to: toAddress
+                    },
+                    fromBlock: queryFromBlock,
+                    toBlock: toBlock
+                });
+                
+                console.log(`🔄 [FALLBACK] Original method succeeded with ${events.length} events`);
+                
+                return events.map(event => {
+                    let formattedValue;
+                    try {
+                        // 安全地处理大数值
+                        const valueBigInt = BigInt(event.returnValues.value);
+                        const decimals = tokenSymbol === 'USDC' ? 6 : 18;
+                        const divisor = BigInt(10 ** decimals);
+                        const valueNumber = Number(valueBigInt) / Number(divisor);
+                        formattedValue = valueNumber.toString();
+                    } catch (bigIntError) {
+                        console.log(`Failed to parse fallback amount: ${bigIntError.message}`);
+                        formattedValue = '[Cannot parse - too large]';
+                    }
+                    
+                    return {
+                        transactionHash: event.transactionHash,
+                        blockNumber: event.blockNumber,
+                        from: event.returnValues.from,
+                        to: event.returnValues.to,
+                        value: event.returnValues.value,
+                        formattedValue: formattedValue
+                    };
+                });
+                
+            } catch (fallbackError) {
+                console.log(`🔄 [FALLBACK] Original method also failed: ${fallbackError.message}`);
+                
+                if (fallbackError.message && (fallbackError.message.includes('limit exceeded') || fallbackError.message.includes('rate limit'))) {
+                    console.log(`🚫 Rate limit confirmed in fallback method`);
+                    throw new Error('RATE_LIMIT_EXCEEDED');
+                }
+                
+                return [];
+            }
         }
     }
     
@@ -499,53 +1052,11 @@ class BlockchainMonitor {
             onTimeout
         });
         
-        // 开始轮询
-        const intervalId = setInterval(async () => {
-            const monitor = this.activeMonitors.get(paymentId);
-            if (!monitor) return;
-            
-            // 如果监听器被暂停，跳过这次检查
-            if (monitor.paused) {
-                const pausedDuration = Date.now() - (monitor.pausedAt || 0);
-                console.log(`⏸️ Monitor for ${paymentId} is paused (${Math.round(pausedDuration/1000)}s), skipping check`);
-                return;
-            }
-            
-            console.log(`🔍 Checking payment status for ${paymentId} (interval check)`);
-            try {
-                await this.checkPaymentStatus(paymentId);
-                console.log(`✅ Payment status check completed for ${paymentId}`);
-            } catch (error) {
-                console.error(`❌ Error checking payment status for ${paymentId}:`, error);
-                
-                // 如果是速率限制错误，暂停监听器一段时间
-                if (error.message === 'RATE_LIMIT_EXCEEDED') {
-                    console.log(`🚫 Rate limit exceeded for ${paymentId}, pausing monitor for ${BLOCKCHAIN_CONFIG.monitoring.retryDelay}ms`);
-                    
-                    // 标记监听器为暂停状态
-                    monitor.paused = true;
-                    monitor.pausedAt = Date.now();
-                    
-                    // 延迟后恢复监听器
-                    setTimeout(() => {
-                        const currentMonitor = this.activeMonitors.get(paymentId);
-                        if (currentMonitor) {
-                            currentMonitor.paused = false;
-                            delete currentMonitor.pausedAt;
-                            console.log(`✅ Resuming monitor for ${paymentId} after rate limit pause`);
-                        }
-                    }, BLOCKCHAIN_CONFIG.monitoring.retryDelay);
-                } else {
-                    // 其他错误，触发错误回调
-                    this.triggerCallback(paymentId, 'onError', {
-                        error: error.message,
-                        paymentId: paymentId
-                    });
-                }
-            }
-        }, BLOCKCHAIN_CONFIG.monitoring.pollingInterval);
+        // 自动轮询已禁用 - 改为手动调试模式
+        console.log(`🚫 [DEBUG-MODE] Auto-polling disabled for ${paymentId}. Use manual debug functions instead.`);
         
-        monitorConfig.intervalId = intervalId;
+        // 不设置自动轮询间隔
+        monitorConfig.intervalId = null; // 标记为无自动轮询
         this.activeMonitors.set(paymentId, monitorConfig);
         
         // 设置超时
@@ -637,9 +1148,12 @@ class BlockchainMonitor {
         
         console.log(`Stopping payment monitoring for ${paymentId}`);
         
-        // 清除定时器
+        // 清除定时器 (如果存在)
         if (monitor.intervalId) {
             clearInterval(monitor.intervalId);
+            console.log(`Cleared interval timer for ${paymentId}`);
+        } else {
+            console.log(`No interval timer to clear for ${paymentId} (debug mode)`);
         }
         
         if (monitor.timeoutId) {

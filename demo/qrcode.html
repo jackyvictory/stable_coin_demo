@@ -113,10 +113,167 @@
                         🔄 Refresh Status
                     </button>
                 </div>
+
+                <!-- Debug Toggle Button -->
+                <div class="debug-toggle-container" style="margin-top: 15px; text-align: center;">
+                    <button id="debug-toggle-btn" onclick="toggleDebugPanel()" style="
+                        padding: 4px 8px; 
+                        background: transparent; 
+                        border: 1px solid #ddd; 
+                        border-radius: 4px; 
+                        color: #666; 
+                        font-size: 11px; 
+                        cursor: pointer;
+                        opacity: 0.6;
+                        transition: opacity 0.2s;
+                    " onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.6'">
+                        ⚙️ Debug
+                    </button>
+                </div>
+
+                <!-- Debug Panel (Hidden by default) -->
+                <div id="debug-panel" style="display: none;">
+                    <!-- Quick Test Section -->
+                    <div class="quick-test-section" style="margin-top: 20px; padding: 15px; border: 3px solid #28a745; border-radius: 8px; background-color: #f8fff8;">
+                        <h4 style="margin: 0 0 10px 0; color: #28a745;">🧪 快速测试 (无需钱包)</h4>
+                        <p style="margin: 5px 0; font-size: 12px; color: #666;">点击下面的按钮直接模拟支付成功，测试页面跳转：</p>
+                        <button onclick="simulatePaymentSuccessForTesting()" style="
+                            padding: 12px 20px; 
+                            background: #28a745; 
+                            color: white; 
+                            border: none; 
+                            border-radius: 6px; 
+                            cursor: pointer; 
+                            font-size: 14px;
+                            font-weight: bold;
+                            margin: 5px;
+                        ">
+                            🎉 模拟支付成功并跳转
+                        </button>
+                        <button onclick="testDirectJumpToSuccess()" style="
+                            padding: 12px 20px; 
+                            background: #17a2b8; 
+                            color: white; 
+                            border: none; 
+                            border-radius: 6px; 
+                            cursor: pointer; 
+                            font-size: 14px;
+                            margin: 5px;
+                        ">
+                            🚀 直接跳转成功页
+                        </button>
+                    </div>
+                    
+                    <!-- Polling Control -->
+                    <div class="polling-control" style="margin-top: 20px; padding: 15px; border: 2px solid #007bff; border-radius: 8px; background-color: #f8f9fa;">
+                        <h4 style="margin: 0 0 10px 0; color: #007bff;">⏯️ Payment Polling Control</h4>
+                        <div id="polling-status-info" style="font-family: monospace; font-size: 12px; color: #333; margin-bottom: 10px;">
+                            Loading polling status...
+                        </div>
+                        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                            <button id="polling-control-button" onclick="handleTogglePolling()" style="padding: 8px 12px; background: #ffc107; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">
+                                ⏸️ Pause Polling
+                            </button>
+                            <button class="debug-button" onclick="stopPolling()" style="padding: 8px 12px; background: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">
+                                🛑 Stop Polling
+                            </button>
+                            <button class="debug-button" onclick="debugPollingStatus()" style="padding: 8px 12px; background: #6c757d; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">
+                                📊 Polling Status
+                            </button>
+                            <button class="debug-button" onclick="handleRefreshBlockCache()" style="padding: 8px 12px; background: #17a2b8; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">
+                                🔄 Refresh Cache
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- RPC Status Display -->
+                    <div class="rpc-status" style="margin-top: 20px; padding: 15px; border: 2px solid #28a745; border-radius: 8px; background-color: #f8f9fa;">
+                        <h4 style="margin: 0 0 10px 0; color: #28a745;">🌐 RPC Connection Status</h4>
+                        <div id="rpc-status-info" style="font-family: monospace; font-size: 12px; color: #333;">
+                            Loading RPC status...
+                        </div>
+                        <button class="debug-button" onclick="showRpcStatus()" style="margin-top: 10px; padding: 6px 10px; background: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">
+                            🔄 Refresh RPC Status
+                        </button>
+                    </div>
+
+                    <!-- Debug Buttons -->
+                    <div class="debug-buttons" style="margin-top: 20px; padding: 15px; border: 2px dashed #ccc; border-radius: 8px; background-color: #f9f9f9;">
+                        <h4 style="margin: 0 0 10px 0; color: #666;">Debug Controls</h4>
+                        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                            <button class="debug-button" onclick="debugGetBlockNumber()" style="padding: 8px 12px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                                📊 GetBlockNumber
+                            </button>
+                            <button class="debug-button" onclick="debugGetBlockAndEvents()" style="padding: 8px 12px; background: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                                🔍 GetBlockNumber+GetPastEvents
+                            </button>
+                            <button class="debug-button" onclick="clearLocalStorage()" style="padding: 8px 12px; background: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                                🗑️ Clear Local Storage
+                            </button>
+                            <button class="debug-button" onclick="testAlternativeRPC()" style="padding: 8px 12px; background: #6f42c1; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                                🔄 Test Alt RPC
+                            </button>
+                            <button class="debug-button" onclick="debugMinimalEventQuery()" style="padding: 8px 12px; background: #fd7e14; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                                🔬 Minimal Event Query
+                            </button>
+                            <button class="debug-button" onclick="debugAlternativeMethod()" style="padding: 8px 12px; background: #20c997; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                                🔧 Alternative Method
+                            </button>
+                            <button class="debug-button" onclick="testMainSystem()" style="padding: 8px 12px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                                🚀 Test Main System
+                            </button>
+                            <button class="debug-button" onclick="testCompleteFlow()" style="padding: 8px 12px; background: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                                🎯 Complete Flow Test
+                            </button>
+                            <button class="debug-button" onclick="debugSwitchRPC()" style="padding: 8px 12px; background: #17a2b8; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                                🔄 Switch RPC
+                            </button>
+                            <button class="debug-button" onclick="debugTestAllRPCs()" style="padding: 8px 12px; background: #6c757d; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                                🏥 Test All RPCs
+                            </button>
+                        </div>
+                        <div id="debug-output" style="margin-top: 10px; padding: 10px; background: #fff; border: 1px solid #ddd; border-radius: 4px; font-family: monospace; font-size: 12px; max-height: 200px; overflow-y: auto;">
+                            Debug output will appear here...
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
 
     <script src="js/qrcode.js"></script>
+    
+    <!-- 确保函数在全局作用域中可用 -->
+    <script>
+        // 确保toggleDebugPanel函数在页面加载后可用
+        window.addEventListener('load', function() {
+            if (typeof toggleDebugPanel === 'undefined') {
+                console.error('toggleDebugPanel function not found, defining fallback');
+                window.toggleDebugPanel = function() {
+                    const debugPanel = document.getElementById('debug-panel');
+                    const toggleBtn = document.getElementById('debug-toggle-btn');
+                    
+                    if (!debugPanel || !toggleBtn) {
+                        console.error('Debug panel or toggle button not found');
+                        return;
+                    }
+                    
+                    const isHidden = debugPanel.style.display === 'none';
+                    
+                    if (isHidden) {
+                        debugPanel.style.display = 'block';
+                        toggleBtn.innerHTML = '⚙️ Hide Debug';
+                        toggleBtn.style.opacity = '1';
+                    } else {
+                        debugPanel.style.display = 'none';
+                        toggleBtn.innerHTML = '⚙️ Debug';
+                        toggleBtn.style.opacity = '0.6';
+                    }
+                };
+            } else {
+                console.log('toggleDebugPanel function found successfully');
+            }
+        });
+    </script>
 </body>
 </html>

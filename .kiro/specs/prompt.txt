@@ -14,22 +14,23 @@ e. 复刻的所有内容，将 imsafu 的文字替换为 EVO Payment，将 imsaf
 
 
 
-
-【符合预期】二维码页面加载时，页面提示 Blockchain Connected，rpc调用返回成功
-【不符合预期】5秒后触发自动查询，调用了两次 rpc，第一次返回成功、第二次返回频率超限
-【不符合预期】之后就没有自动查询了
-【符合预期】手动点击按钮，触发一次 rpc 调用、返回成功，同时页面提示 Monitor Active - monitoring
-【符合预期】5秒后再次手动点击按钮，仍然触发一次 rpc 调用、返回成功，同时页面提示仍然是 Monitor Active - monitoring
+背景：
+ 这个任务列表，已经执行了大部分，目前遇到的问题是区块链监听交易的调用不符合预期，具体问题：
+【符合预期】二维码页面加载时，页面提示 Blockchain Connected，区块链rpc调用返回成功
+【不符合预期】等待一段时间后，页面触发自动查询，调用了两次 rpc，第一次返回成功、第二次返回频率超限
+【不符合预期】手动点击按钮，时页面提示 Monitor Active - monitoring，但是不会触发rpc调用，控制台输出一直是 [Log] 🔄 [MANUAL-REFRESH] Manual verification failed: – "Monitor is paused due to rate limit, please wait" (qrcode.js, line 535)
 【不符合预期】然后等了几十秒，再次触发自动查询，调用了两次 rpc，第一次返回成功、第二次返回频率超限
 
-解决此 bug 的思路：将自动轮询的间隔时间改回 5秒，同时修改自动轮询的查询机制，相当于每隔 5秒手动点击按钮，这样是否也能查询到目标交易？
-
-
-
-手动刷新/自动轮询：
-
+出现这个问题的原因，应该是每次轮询会调用两次 rpc：
 第一次RPC调用：checkConnection() → getBlockNumber()
-区块号比较：检查是否有新区块
-固定延迟：如果需要查询交易，等待1.5秒
 第二次RPC调用：getLatestTokenTransfers() → getPastEvents()
+
+第一次调用没有问题、返回成功，第二次调用由于查询的区块过多，导致返回速率超限
+
+调试方案：
+1.重新设计区块链的查询逻辑，并且暂时移除自动查询逻辑，在二维码页面中增加2个临时的调试按钮：GetBlockNumber, GetBlockNumber+GetPastEvents，然后我来手动调试
+2.点击 GetBlockNumber 时，将返回的区块ID记录到本地
+3.点击 GetBlockNumber+GetGetPastEvents 时，先触发 GetBlockNumber 获取最新的区块 ID，然后计算本地上次记录的区块ID与最新区块ID之间的差值，调用 rpc 获取差值的区块ID的交易详情
+
+
 

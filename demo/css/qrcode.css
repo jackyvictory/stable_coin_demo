@@ -412,4 +412,78 @@
   color: white;
   font-weight: bold;
   font-size: 14px;
+}/* Debu
+g Buttons Styles */
+.debug-buttons {
+  margin-top: 20px;
+  padding: 15px;
+  border: 2px dashed #ccc;
+  border-radius: 8px;
+  background-color: #f9f9f9;
+}
+
+.debug-buttons h4 {
+  margin: 0 0 10px 0;
+  color: #666;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.debug-button {
+  padding: 8px 12px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  margin-right: 8px;
+  margin-bottom: 8px;
+}
+
+.debug-button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.debug-button:active {
+  transform: translateY(0);
+}
+
+#debug-output {
+  margin-top: 10px;
+  padding: 10px;
+  background: #fff;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  font-size: 11px;
+  line-height: 1.4;
+  max-height: 200px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+
+#debug-output:empty::before {
+  content: "Debug output will appear here...";
+  color: #999;
+  font-style: italic;
+}
+
+/* Responsive adjustments for debug section */
+@media (max-width: 768px) {
+  .debug-buttons {
+    padding: 12px;
+  }
+  
+  .debug-button {
+    font-size: 11px;
+    padding: 6px 10px;
+  }
+  
+  #debug-output {
+    font-size: 10px;
+    max-height: 150px;
+  }
 }

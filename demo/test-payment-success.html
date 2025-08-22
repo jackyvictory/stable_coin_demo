@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>支付测试工具 - EVO Payment</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .test-container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .test-title {
+            color: #2328da;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .test-section {
+            margin-bottom: 25px;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+        }
+        .test-button {
+            background: #2328da;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            margin: 5px;
+            font-size: 14px;
+        }
+        .test-button:hover {
+            background: #1a1f9a;
+        }
+        .success-button {
+            background: #28a745;
+        }
+        .success-button:hover {
+            background: #218838;
+        }
+        .warning-button {
+            background: #ffc107;
+            color: #212529;
+        }
+        .warning-button:hover {
+            background: #e0a800;
+        }
+        .info-box {
+            background: #e7f3ff;
+            border: 1px solid #b3d9ff;
+            padding: 15px;
+            border-radius: 6px;
+            margin: 10px 0;
+        }
+        .step-list {
+            list-style: none;
+            padding: 0;
+        }
+        .step-list li {
+            padding: 8px 0;
+            border-bottom: 1px solid #eee;
+        }
+        .step-list li:before {
+            content: "✓ ";
+            color: #28a745;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1 class="test-title">🧪 支付流程测试工具</h1>
+        
+        <div class="info-box">
+            <strong>说明：</strong>这个工具可以帮助你在没有 web3 钱包的情况下测试支付流程的跳转功能。
+        </div>
+
+        <div class="test-section">
+            <h3>📋 测试步骤</h3>
+            <ul class="step-list">
+                <li>创建模拟支付数据</li>
+                <li>跳转到二维码页面</li>
+                <li>模拟支付成功</li>
+                <li>验证跳转到成功页面</li>
+            </ul>
+        </div>
+
+        <div class="test-section">
+            <h3>🚀 快速测试</h3>
+            <p>点击下面的按钮开始完整的支付流程测试：</p>
+            <button class="test-button success-button" onclick="startFullTest()">
+                🎯 开始完整测试流程
+            </button>
+            <button class="test-button" onclick="createMockPayment()">
+                📝 创建模拟支付数据
+            </button>
+            <button class="test-button" onclick="goToQRCode()">
+                📱 跳转到二维码页面
+            </button>
+            <button class="test-button success-button" onclick="simulatePaymentSuccess()">
+                ✅ 模拟支付成功
+            </button>
+        </div>
+
+        <div class="test-section">
+            <h3>🔧 单步测试</h3>
+            <p>如果你想分步测试每个环节：</p>
+            <button class="test-button" onclick="testProductSelection()">
+                🛒 测试产品选择页
+            </button>
+            <button class="test-button" onclick="testPaymentSelection()">
+                💳 测试支付选择页
+            </button>
+            <button class="test-button warning-button" onclick="testQRCodePage()">
+                📱 测试二维码页面
+            </button>
+            <button class="test-button success-button" onclick="testSuccessPage()">
+                🎉 测试成功页面
+            </button>
+        </div>
+
+        <div class="test-section">
+            <h3>🛠️ 调试工具</h3>
+            <button class="test-button" onclick="showCurrentPaymentData()">
+                📊 查看当前支付数据
+            </button>
+            <button class="test-button" onclick="clearPaymentData()">
+                🗑️ 清除支付数据
+            </button>
+            <button class="test-button" onclick="showStorageInfo()">
+                💾 查看存储信息
+            </button>
+        </div>
+
+        <div id="output" style="margin-top: 20px; padding: 15px; background: #f8f9fa; border-radius: 6px; font-family: monospace; font-size: 12px; display: none;">
+        </div>
+    </div>
+
+    <script>
+        // 输出日志函数
+        function log(message) {
+            const output = document.getElementById('output');
+            output.style.display = 'block';
+            output.innerHTML += new Date().toLocaleTimeString() + ': ' + message + '<br>';
+            output.scrollTop = output.scrollHeight;
+            console.log(message);
+        }
+
+        // 创建模拟支付数据
+        function createMockPayment() {
+            const mockPaymentData = {
+                paymentId: 'test_' + Date.now(),
+                product: 'rice',
+                productName: 'Food Donation (Rice)',
+                price: 5.00,
+                currency: 'USD',
+                status: 'waiting',
+                timestamp: Date.now(),
+                expiresAt: Date.now() + (30 * 60 * 1000), // 30分钟后过期
+                selectedPayment: {
+                    symbol: 'USDT',
+                    name: 'Tether USD'
+                },
+                selectedNetwork: {
+                    symbol: 'BSC',
+                    name: 'BNB Smart Chain'
+                },
+                receiverAddress: '0xe27577B0e3920cE35f100f66430de0108cb78a04'
+            };
+
+            // 保存到 sessionStorage
+            sessionStorage.setItem('paymentData', JSON.stringify(mockPaymentData));
+            
+            log('✅ 模拟支付数据已创建: ' + mockPaymentData.paymentId);
+            log('💰 金额: $' + mockPaymentData.price);
+            log('🪙 支付方式: ' + mockPaymentData.selectedPayment.symbol);
+            log('🌐 网络: ' + mockPaymentData.selectedNetwork.symbol);
+            
+            return mockPaymentData;
+        }
+
+        // 跳转到二维码页面
+        function goToQRCode() {
+            // 确保有支付数据
+            const paymentData = sessionStorage.getItem('paymentData');
+            if (!paymentData) {
+                log('⚠️ 没有支付数据，先创建模拟数据...');
+                createMockPayment();
+            }
+            
+            log('🔄 跳转到二维码页面...');
+            setTimeout(() => {
+                window.location.href = 'qrcode.html';
+            }, 1000);
+        }
+
+        // 模拟支付成功
+        function simulatePaymentSuccess() {
+            const paymentDataStr = sessionStorage.getItem('paymentData');
+            if (!paymentDataStr) {
+                log('❌ 没有找到支付数据');
+                return;
+            }
+
+            const paymentData = JSON.parse(paymentDataStr);
+            
+            // 添加验证结果
+            paymentData.verificationResult = {
+                verified: true,
+                transfer: {
+                    transactionHash: '0x' + Math.random().toString(16).substr(2, 64),
+                    blockNumber: Math.floor(Math.random() * 1000000) + 30000000,
+                    formattedValue: paymentData.price.toString()
+                },
+                confirmations: 3,
+                amount: paymentData.price.toString()
+            };
+            
+            paymentData.status = 'confirmed';
+            paymentData.confirmedAt = Date.now();
+            
+            // 更新存储
+            sessionStorage.setItem('paymentData', JSON.stringify(paymentData));
+            
+            log('🎉 支付成功已模拟！');
+            log('📝 交易哈希: ' + paymentData.verificationResult.transfer.transactionHash);
+            log('🔄 跳转到成功页面...');
+            
+            setTimeout(() => {
+                window.location.href = 'success.html';
+            }, 2000);
+        }
+
+        // 开始完整测试流程
+        function startFullTest() {
+            log('🚀 开始完整测试流程...');
+            
+            // 1. 创建模拟支付数据
+            const paymentData = createMockPayment();
+            
+            // 2. 等待一秒后跳转到二维码页面
+            setTimeout(() => {
+                log('📱 即将跳转到二维码页面，请在该页面使用调试功能测试支付成功...');
+                log('💡 提示：在二维码页面点击 "⚙️ Debug" 按钮，然后点击 "🎯 Complete Flow Test"');
+                
+                setTimeout(() => {
+                    window.location.href = 'qrcode.html';
+                }, 2000);
+            }, 1000);
+        }
+
+        // 测试各个页面
+        function testProductSelection() {
+            log('🛒 跳转到产品选择页...');
+            window.location.href = 'index.html';
+        }
+
+        function testPaymentSelection() {
+            // 确保有基本的产品数据
+            if (!sessionStorage.getItem('selectedProduct')) {
+                sessionStorage.setItem('selectedProduct', JSON.stringify({
+                    key: 'rice',
+                    name: 'Food Donation (Rice)',
+                    price: 5.00
+                }));
+            }
+            log('💳 跳转到支付选择页...');
+            window.location.href = 'payment.html';
+        }
+
+        function testQRCodePage() {
+            createMockPayment();
+            log('📱 跳转到二维码页面...');
+            window.location.href = 'qrcode.html';
+        }
+
+        function testSuccessPage() {
+            createMockPayment();
+            simulatePaymentSuccess();
+        }
+
+        // 调试工具
+        function showCurrentPaymentData() {
+            const paymentData = sessionStorage.getItem('paymentData');
+            if (paymentData) {
+                log('📊 当前支付数据:');
+                log(JSON.stringify(JSON.parse(paymentData), null, 2));
+            } else {
+                log('❌ 没有找到支付数据');
+            }
+        }
+
+        function clearPaymentData() {
+            sessionStorage.removeItem('paymentData');
+            sessionStorage.removeItem('selectedProduct');
+            sessionStorage.removeItem('currentPaymentId');
+            log('🗑️ 支付数据已清除');
+        }
+
+        function showStorageInfo() {
+            log('💾 SessionStorage 内容:');
+            for (let i = 0; i < sessionStorage.length; i++) {
+                const key = sessionStorage.key(i);
+                const value = sessionStorage.getItem(key);
+                log(`${key}: ${value.substring(0, 100)}${value.length > 100 ? '...' : ''}`);
+            }
+        }
+
+        // 页面加载完成后的初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            log('🧪 支付测试工具已加载');
+            log('💡 你可以使用这个工具来测试支付流程，无需真实的 web3 钱包');
+        });
+    </script>
+</body>
+</html>

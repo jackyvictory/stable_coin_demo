@@ -1,0 +1,36 @@
+services:
+  evo-payment:
+    image: evo-payment:${IMAGE_TAG:-latest}
+    container_name: evo-payment-app
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      # 挂载日志目录
+      - ./logs:/var/log/nginx
+      - ./logs:/opt/evo-payment/logs
+      # 挂载 SSL 证书目录 (如果使用 HTTPS)
+      - ./ssl:/opt/evo-payment/ssl:ro
+      # 挂载 Let's Encrypt webroot 目录 (用于证书验证)
+      - /var/www/certbot:/var/www/certbot:ro
+    restart: unless-stopped
+    environment:
+      - DOMAIN_NAME=${DOMAIN_NAME:-localhost}
+      - SSL_MODE=auto
+    networks:
+      - evo-payment-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+networks:
+  evo-payment-network:
+    driver: bridge
