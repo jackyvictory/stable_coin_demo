@@ -26,7 +26,7 @@ log_success() { echo -e "${PURPLE}[SUCCESS]${NC} $1"; }
 log_highlight() { echo -e "${CYAN}[HIGHLIGHT]${NC} $1"; }
 
 if [ $# -lt 4 ]; then
-    echo "🚀 EVO Payment 完整部署脚本"
+    echo "🚀 Stable Coin 完整部署脚本"
     echo "============================"
     echo "使用方法: $0 <user@host> <domain> <ssh-key> <email> [rebuild]"
     echo "参数说明:"
@@ -67,10 +67,10 @@ SCP_CMD="scp -i $SSH_KEY"
 
 echo "🚀 =================================="
 if [ "$REBUILD_IMAGE" = "true" ]; then
-    echo "   EVO Payment 完整部署"
+    echo "   Stable Coin 完整部署"
     echo "   智能缓存 - 快速镜像打包到HTTPS上线"
 else
-    echo "   EVO Payment 快速部署"
+    echo "   Stable Coin 快速部署"
     echo "   跳过镜像构建 - 直接部署现有镜像"
 fi
 echo "=================================="
@@ -189,7 +189,7 @@ fi
 CURRENT_STEP=$((CURRENT_STEP + 1))
 log_step "步骤 $CURRENT_STEP/$TOTAL_STEPS: 智能清理远程环境"
 $SSH_CMD $TARGET_HOST << 'EOF'
-echo "停止EVO Payment相关容器..."
+echo "停止Stable Coin相关容器..."
 docker ps -q --filter "name=evo-payment" | xargs -r docker stop 2>/dev/null || true
 docker ps -aq --filter "name=evo-payment" | xargs -r docker rm 2>/dev/null || true
 
@@ -318,10 +318,10 @@ sudo mkdir -p /var/www/test
 sudo cat > /var/www/test/index.html << 'HTML'
 <!DOCTYPE html>
 <html>
-<head><title>EVO Payment Connectivity Test</title></head>
+<head><title>Stable Coin Connectivity Test</title></head>
 <body>
 <h1>🎉 网络连通性测试成功！</h1>
-<p>EVO Payment 部署准备就绪</p>
+<p>Stable Coin 部署准备就绪</p>
 </body>
 </html>
 HTML
@@ -697,17 +697,17 @@ if [ ! -f "manage.sh" ]; then
 #!/bin/bash
 case "\$1" in
     "start")
-        echo "启动 EVO Payment..."
+        echo "启动 Stable Coin..."
         docker-compose up -d
         sleep 5
         docker-compose ps
         ;;
     "stop")
-        echo "停止 EVO Payment..."
+        echo "停止 Stable Coin..."
         docker-compose down
         ;;
     "restart")
-        echo "重启 EVO Payment..."
+        echo "重启 Stable Coin..."
         docker-compose restart
         sleep 5
         docker-compose ps
@@ -765,7 +765,7 @@ case "\$1" in
         fi
         ;;
     *)
-        echo "EVO Payment 管理脚本"
+        echo "Stable Coin 管理脚本"
         echo "使用方法: \$0 {start|stop|restart|logs|status|ssl-renew}"
         ;;
 esac
@@ -882,7 +882,7 @@ echo "🎉 =================================="
 echo "     完整部署成功！"
 echo "=================================="
 echo
-log_success "EVO Payment 已从头完整部署到 $TARGET_HOST"
+log_success "Stable Coin 已从头完整部署到 $TARGET_HOST"
 echo
 log_highlight "📍 访问地址:"
 log_highlight "  🔒 HTTPS: https://$DOMAIN_NAME (推荐)"

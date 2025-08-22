@@ -1,6 +1,6 @@
-// EVO Payment - Success Page JavaScript
+// Stable Coin - Success Page JavaScript
 
-// 全局变量
+// Global variables
 let paymentData = null;
 
 // 页面加载完成后初始化
@@ -24,7 +24,8 @@ function loadPaymentData() {
             paymentId: 'N/A',
             selectedPayment: { symbol: 'N/A', name: 'N/A' },
             selectedNetwork: { symbol: 'N/A', name: 'N/A' },
-            timestamp: Date.now()
+            timestamp: Date.now(),
+            confirmedAt: Date.now() // 添加确认时间作为备用
         };
     }
 }
@@ -75,8 +76,25 @@ function displaySuccessInfo() {
         payIdElement.textContent = paymentData.paymentId;
         
         // 显示交易时间
-        const transactionTime = new Date(paymentData.timestamp);
-        timestampElement.textContent = formatTimestamp(transactionTime);
+        let transactionTime;
+        if (paymentData.confirmedAt) {
+            // 使用确认时间
+            transactionTime = new Date(paymentData.confirmedAt);
+        } else if (paymentData.timestamp) {
+            // 回退到创建时间
+            transactionTime = new Date(paymentData.timestamp);
+        } else {
+            // 默认使用当前时间
+            transactionTime = new Date();
+        }
+        
+        // 检查日期是否有效
+        if (isNaN(transactionTime.getTime())) {
+            console.error('Invalid transaction time:', paymentData);
+            timestampElement.textContent = 'Invalid Date';
+        } else {
+            timestampElement.textContent = formatTimestamp(transactionTime);
+        }
     }
 }
 
@@ -94,15 +112,26 @@ function getProductInfo(productKey) {
 
 // 格式化时间戳
 function formatTimestamp(date) {
-    const options = {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit'
-    };
-    return date.toLocaleDateString('en-US', options);
+    // 检查输入是否为有效日期
+    if (!date || isNaN(date.getTime())) {
+        console.error('Invalid date provided to formatTimestamp:', date);
+        return 'Invalid Date';
+    }
+    
+    try {
+        const options = {
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit'
+        };
+        return date.toLocaleDateString('en-US', options);
+    } catch (error) {
+        console.error('Error formatting timestamp:', error);
+        return 'Invalid Date';
+    }
 }
 
 // 开始新的支付

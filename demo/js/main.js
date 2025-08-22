@@ -1,4 +1,4 @@
-// EVO Payment - Main JavaScript
+// Stable Coin - Main JavaScript
 
 // 全局变量
 let selectedProduct = null;
@@ -68,10 +68,10 @@ function updateProductItemStyles() {
 function updatePaymentButton() {
     const payButton = document.getElementById('pay-button');
     if (payButton && selectedProduct && selectedPrice) {
-        payButton.textContent = `Pay With EVO Payment - $${selectedPrice.toFixed(2)}`;
+        payButton.textContent = `Pay With Stable Coin - $${selectedPrice.toFixed(2)}`;
         payButton.disabled = false;
     } else {
-        payButton.textContent = 'Pay With EVO Payment';
+        payButton.textContent = 'Pay With Stable Coin';
         payButton.disabled = true;
     }
 }

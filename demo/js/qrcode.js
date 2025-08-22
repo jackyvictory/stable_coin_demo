@@ -1,4 +1,4 @@
-// EVO Payment - QR Code Page JavaScript
+// Stable Coin - QR Code Page JavaScript
 
 // 全局变量
 let paymentData = null;
@@ -815,7 +815,7 @@ function simulatePaymentSuccessForTesting() {
     console.log('🧪 [TEST] Simulating payment success for testing...');
     
     if (!paymentData) {
-        alert('没有支付数据，无法进行测试');
+        alert('No payment data available for testing');
         return;
     }
     
@@ -845,7 +845,7 @@ function simulatePaymentSuccessForTesting() {
     sessionStorage.setItem('paymentData', JSON.stringify(paymentData));
     
     // 显示成功状态
-    updatePaymentStatus('confirmed', '🧪 测试：支付成功！');
+    updatePaymentStatus('confirmed', '🧪 Test: Payment Success!');
     
     // 停止轮询
     if (statusCheckInterval) {
@@ -854,7 +854,7 @@ function simulatePaymentSuccessForTesting() {
         updatePollingStatusDisplay();
     }
     
-    alert('🧪 测试模式：支付成功已模拟！\n即将跳转到成功页面...');
+    alert('🧪 Test Mode: Payment success simulated!\nRedirecting to success page...');
     
     // 延迟跳转
     setTimeout(() => {
@@ -890,7 +890,7 @@ function testDirectJumpToSuccess() {
         sessionStorage.setItem('paymentData', JSON.stringify(paymentData));
     }
     
-    alert('🧪 测试模式：直接跳转到成功页面');
+    alert('🧪 Test Mode: Direct jump to success page');
     window.location.href = 'success.html';
 }
 

@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# EVO Payment Docker 容器启动脚本
+# Stable Coin Docker 容器启动脚本
 # 自动检测SSL证书，支持动态 HTTP/HTTPS 配置
 
 set -e
@@ -25,7 +25,7 @@ log_error() {
 
 # 初始化函数
 init_container() {
-    log_info "初始化 EVO Payment 容器..."
+    log_info "初始化 Stable Coin 容器..."
     
     # 设置默认值
     DOMAIN_NAME=${DOMAIN_NAME:-"localhost"}
@@ -195,7 +195,7 @@ EOF
 
 # 显示访问信息
 show_access_info() {
-    log_info "=== EVO Payment 启动完成 ==="
+    log_info "=== Stable Coin 启动完成 ==="
     
     if [ -f "/opt/evo-payment/ssl/cert.pem" ] && [ -f "/opt/evo-payment/ssl/key.pem" ]; then
         log_info "HTTPS 访问地址: https://$DOMAIN_NAME"

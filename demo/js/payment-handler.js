@@ -1,4 +1,4 @@
-// EVO Payment - Payment Handler
+// Stable Coin - Payment Handler
 
 // 支付状态枚举
 const PaymentStatus = {

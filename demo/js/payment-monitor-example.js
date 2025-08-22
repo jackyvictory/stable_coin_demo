@@ -1,4 +1,4 @@
-// EVO Payment - Payment Monitoring Example
+// Stable Coin - Payment Monitoring Example
 
 // 支付监听示例类
 class PaymentMonitorExample {

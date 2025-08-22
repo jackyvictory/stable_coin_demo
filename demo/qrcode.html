@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>EVO Payment - QR Code Payment</title>
-    <meta name="description" content="EVO Payment - Complete your crypto payment">
+    <title>Stable Coin - QR Code Payment</title>
+    <meta name="description" content="Stable Coin - Complete your crypto payment">
     <link rel="stylesheet" href="css/main.css">
     <link rel="stylesheet" href="css/qrcode.css">
     <script src="config.js"></script>
@@ -13,17 +13,6 @@
     <script src="js/payment-handler.js"></script>
 </head>
 <body>
-    <!-- Header -->
-    <div class="qrcode-header">
-        <div class="qrcode-header-content">
-            <div class="logo-container">
-                <a href="index.html">
-                    <img src="./images/logo.png" alt="EVO Payment" class="header-logo">
-                </a>
-            </div>
-        </div>
-    </div>
-
     <!-- Main Container -->
     <div class="qrcode-main-container">
         <!-- QR Code Container -->
@@ -135,8 +124,8 @@
                 <div id="debug-panel" style="display: none;">
                     <!-- Quick Test Section -->
                     <div class="quick-test-section" style="margin-top: 20px; padding: 15px; border: 3px solid #28a745; border-radius: 8px; background-color: #f8fff8;">
-                        <h4 style="margin: 0 0 10px 0; color: #28a745;">🧪 快速测试 (无需钱包)</h4>
-                        <p style="margin: 5px 0; font-size: 12px; color: #666;">点击下面的按钮直接模拟支付成功，测试页面跳转：</p>
+                        <h4 style="margin: 0 0 10px 0; color: #28a745;">🧪 Quick Test (No Wallet Required)</h4>
+                        <p style="margin: 5px 0; font-size: 12px; color: #666;">Click the buttons below to simulate payment success and test page navigation:</p>
                         <button onclick="simulatePaymentSuccessForTesting()" style="
                             padding: 12px 20px; 
                             background: #28a745; 
@@ -148,7 +137,7 @@
                             font-weight: bold;
                             margin: 5px;
                         ">
-                            🎉 模拟支付成功并跳转
+                            🎉 Simulate Payment Success
                         </button>
                         <button onclick="testDirectJumpToSuccess()" style="
                             padding: 12px 20px; 
@@ -160,7 +149,7 @@
                             font-size: 14px;
                             margin: 5px;
                         ">
-                            🚀 直接跳转成功页
+                            🚀 Jump to Success Page
                         </button>
                     </div>
                     
@@ -243,9 +232,9 @@
 
     <script src="js/qrcode.js"></script>
     
-    <!-- 确保函数在全局作用域中可用 -->
+    <!-- Ensure functions are available in global scope -->
     <script>
-        // 确保toggleDebugPanel函数在页面加载后可用
+        // Ensure toggleDebugPanel function is available after page load
         window.addEventListener('load', function() {
             if (typeof toggleDebugPanel === 'undefined') {
                 console.error('toggleDebugPanel function not found, defining fallback');

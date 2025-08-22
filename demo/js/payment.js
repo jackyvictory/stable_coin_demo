@@ -1,4 +1,4 @@
-// EVO Payment - Payment Page JavaScript
+// Stable Coin - Payment Page JavaScript
 
 // 全局变量
 let selectedPayment = null;

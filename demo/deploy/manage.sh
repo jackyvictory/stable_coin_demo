@@ -1,21 +1,21 @@
 #!/bin/bash
 
-# EVO Payment 管理脚本
-# 用于管理容器化的 EVO Payment 应用
+# Stable Coin 管理脚本
+# 用于管理容器化的 Stable Coin 应用
 
 case "$1" in
     "start")
-        echo "启动 EVO Payment..."
+        echo "启动 Stable Coin..."
         docker-compose up -d
         sleep 5
         docker-compose ps
         ;;
     "stop")
-        echo "停止 EVO Payment..."
+        echo "停止 Stable Coin..."
         docker-compose down
         ;;
     "restart")
-        echo "重启 EVO Payment..."
+        echo "重启 Stable Coin..."
         docker-compose restart
         sleep 5
         docker-compose ps
@@ -150,7 +150,7 @@ case "$1" in
         fi
         ;;
     *)
-        echo "EVO Payment 管理脚本"
+        echo "Stable Coin 管理脚本"
         echo "使用方法: $0 {start|stop|restart|logs|status|ssl-renew|ssl-force-renew|ssl-check}"
         ;;
 esac

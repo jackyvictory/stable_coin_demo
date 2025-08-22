@@ -1,4 +1,4 @@
-// EVO Payment Configuration
+// Stable Coin Configuration
 const CONFIG = {
   // 区块链配置
   blockchain: {
@@ -18,7 +18,7 @@ const CONFIG = {
   
   // UI 配置
   ui: {
-    brand: 'EVO Payment',
+    brand: 'Stable Coin',
     logo: './images/logo.png',
     theme: {
       primaryColor: '#2328da',

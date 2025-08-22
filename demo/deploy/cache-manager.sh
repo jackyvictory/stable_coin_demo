@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# EVO Payment 缓存管理脚本
+# Stable Coin 缓存管理脚本
 # 用于管理Docker镜像缓存，优化部署速度
 
 set -e
@@ -17,7 +17,7 @@ log_warn() { echo -e "${YELLOW}[WARN]${NC} $1"; }
 log_error() { echo -e "${RED}[ERROR]${NC} $1"; }
 
 show_usage() {
-    echo "EVO Payment 缓存管理脚本"
+    echo "Stable Coin 缓存管理脚本"
     echo "========================"
     echo "使用方法: $0 <command>"
     echo
@@ -35,7 +35,7 @@ show_usage() {
 }
 
 show_status() {
-    echo "📊 EVO Payment 镜像缓存状态"
+    echo "📊 Stable Coin 镜像缓存状态"
     echo "=========================="
     
     # 基础镜像状态
@@ -138,12 +138,12 @@ rebuild_base() {
 purge_all() {
     echo "💥 完全清理所有镜像"
     echo "=================="
-    log_warn "⚠️ 这将删除所有EVO Payment相关镜像，包括缓存"
+    log_warn "⚠️ 这将删除所有Stable Coin相关镜像，包括缓存"
     read -p "确认继续? (y/N): " -n 1 -r
     echo
     
     if [[ $REPLY =~ ^[Yy]$ ]]; then
-        log_info "删除所有EVO Payment镜像..."
+        log_info "删除所有Stable Coin镜像..."
         docker images | grep evo-payment | awk '{print $3}' | xargs -r docker rmi -f 2>/dev/null || true
         log_info "✅ 所有镜像已删除"
         log_warn "下次部署将需要重新下载所有组件"
@@ -159,7 +159,7 @@ show_size_stats() {
     # 计算总大小
     TOTAL_SIZE=$(docker images | grep evo-payment | awk '{print $7}' | sed 's/MB//' | sed 's/GB/*1024/' | bc 2>/dev/null | awk '{sum+=$1} END {print sum}' || echo "0")
     
-    echo "EVO Payment 相关镜像:"
+    echo "Stable Coin 相关镜像:"
     docker images | grep evo-payment | while read line; do
         echo "  $line"
     done

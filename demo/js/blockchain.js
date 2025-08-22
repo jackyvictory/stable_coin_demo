@@ -1,4 +1,4 @@
-// EVO Payment - Blockchain Integration
+// Stable Coin - Blockchain Integration
 
 // 区块链配置
 const BLOCKCHAIN_CONFIG = {
