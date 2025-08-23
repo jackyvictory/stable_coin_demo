@@ -51,7 +51,7 @@ function displayPaymentInfo() {
         const itemName = productInfo ? productInfo.description : `Food Donation (${paymentData.product})`;
         
         itemElement.textContent = itemName;
-        amountElement.textContent = `${paymentData.price.toFixed(2)}`;
+        amountElement.textContent = `$${paymentData.price.toFixed(2)}`;
         
         // 显示 PayID
         payIdElement.textContent = paymentData.paymentId;

@@ -10,10 +10,10 @@ let isMonitoringEnabled = true; // 监控启用状态
 function handleWebSocketControl() {
     const button = document.getElementById('ws-main-control-button');
     if (!button) return;
-    
+
     if (window.blockchainManager && window.blockchainManager.wsMonitor) {
         const wsMonitor = window.blockchainManager.wsMonitor;
-        
+
         if (wsMonitor.isConnected) {
             // 记录断开操作开始
             addWebSocketDebugMessage('🔌 Manual disconnect initiated', 'websocket', {
@@ -21,7 +21,7 @@ function handleWebSocketControl() {
                 connectionState: wsMonitor.connectionState,
                 isActive: wsMonitor.isConnected
             });
-            
+
             // 断开页面自动创建的连接
             wsMonitor.disconnect();
             button.textContent = '🔌 Connect';
@@ -30,7 +30,7 @@ function handleWebSocketControl() {
                 reason: 'Manual disconnect',
                 previousState: 'connected'
             });
-            
+
             // 停止支付监听
             if (paymentListenerWS && paymentListenerWS.isActive) {
                 addWebSocketDebugMessage('Stopping payment monitoring...', 'warning');
@@ -42,18 +42,18 @@ function handleWebSocketControl() {
             } else {
                 addWebSocketDebugMessage('No active payment monitoring to stop', 'info');
             }
-            
+
             // 更新页面状态
             updatePaymentStatus('error', 'Disconnected from blockchain');
             addWebSocketDebugMessage('Page status updated to disconnected', 'info');
-            
+
         } else {
             // 记录重连操作开始
             addWebSocketDebugMessage('🔌 Manual reconnect initiated', 'websocket', {
                 previousState: wsMonitor.connectionState,
                 availableEndpoints: wsMonitor.wsEndpoints?.length || 0
             });
-            
+
             // 检查监控是否被禁用
             if (!isMonitoringEnabled) {
                 addWebSocketDebugMessage('❌ Cannot reconnect - monitoring is disabled', 'warning', {
@@ -62,7 +62,7 @@ function handleWebSocketControl() {
                 });
                 return;
             }
-            
+
             // 重新连接并恢复支付监听
             button.textContent = '⏳ Connecting...';
             button.style.background = '#6c757d';
@@ -71,21 +71,21 @@ function handleWebSocketControl() {
                 targetEndpoint: wsMonitor.wsEndpoints?.[0]?.name || 'Unknown',
                 monitoringEnabled: isMonitoringEnabled
             });
-            
+
             wsMonitor.connect().then(success => {
                 if (success) {
                     button.textContent = '🔌 Disconnect';
                     button.style.background = '#dc3545';
-                    
+
                     const connectionDetails = {
                         endpoint: wsMonitor.wsEndpoints?.[wsMonitor.currentEndpointIndex]?.name || 'Unknown',
                         endpointIndex: wsMonitor.currentEndpointIndex,
                         connectionState: wsMonitor.connectionState,
                         readyState: wsMonitor.ws?.readyState
                     };
-                    
+
                     addWebSocketDebugMessage('WebSocket reconnection successful', 'success', connectionDetails);
-                    
+
                     // 恢复支付监听
                     if (paymentData && !paymentListenerWS?.isActive) {
                         addWebSocketDebugMessage('Restoring payment monitoring...', 'info', {
@@ -128,7 +128,7 @@ function handleWebSocketControl() {
 function toggleWebSocketDebugInfo() {
     const debugPanel = document.getElementById('ws-debug-messages');
     if (!debugPanel) return;
-    
+
     if (debugPanel.style.display === 'none') {
         debugPanel.style.display = 'block';
     } else {
@@ -150,7 +150,7 @@ let wsDebugMessages = [];
 // 添加 WebSocket 调试消息 (增强版 - 始终记录)
 function addWebSocketDebugMessage(message, type = 'info', details = null) {
     const timestamp = new Date().toLocaleTimeString();
-    
+
     // 获取图标
     let icon = '';
     switch (type) {
@@ -164,7 +164,7 @@ function addWebSocketDebugMessage(message, type = 'info', details = null) {
         case 'transaction': icon = '💰'; break;
         default: icon = 'ℹ️';
     }
-    
+
     // 存储到全局数组 (始终记录，无论调试面板是否打开)
     const debugMessage = {
         timestamp,
@@ -174,20 +174,20 @@ function addWebSocketDebugMessage(message, type = 'info', details = null) {
         icon,
         fullText: `${icon} [${timestamp}] ${message}`
     };
-    
+
     wsDebugMessages.push(debugMessage);
-    
+
     // 限制消息数量，保留最新的100条
     if (wsDebugMessages.length > 100) {
         wsDebugMessages = wsDebugMessages.slice(-100);
     }
-    
+
     // 如果调试面板存在且可见，实时更新显示
     const debugContent = document.getElementById('ws-debug-content');
     if (debugContent) {
         updateWebSocketDebugDisplay();
     }
-    
+
     // 同时输出到控制台以便开发调试
     console.log(`[WebSocket Debug] ${message}`, details || '');
 }
@@ -196,19 +196,19 @@ function addWebSocketDebugMessage(message, type = 'info', details = null) {
 function toggleDebugPanel() {
     const debugPanel = document.getElementById('debug-panel');
     const toggleBtn = document.getElementById('debug-toggle-btn');
-    
+
     if (!debugPanel || !toggleBtn) {
         console.error('Debug panel or toggle button not found');
         return;
     }
-    
+
     const isHidden = debugPanel.style.display === 'none';
-    
+
     if (isHidden) {
         debugPanel.style.display = 'block';
         toggleBtn.innerHTML = '⚙️ Hide Debug';
         toggleBtn.style.opacity = '1';
-        
+
         // 更新WebSocket状态信息
         updateWebSocketStatusInfo();
     } else {
@@ -227,7 +227,7 @@ function restartPaymentMonitoring() {
         });
         return;
     }
-    
+
     addWebSocketDebugMessage('🔄 Restarting payment monitoring...', 'info', {
         paymentId: paymentData.paymentId,
         walletAddress: paymentData.walletAddress,
@@ -235,7 +235,7 @@ function restartPaymentMonitoring() {
         tokenSymbol: paymentData.selectedPayment?.symbol,
         network: paymentData.selectedNetwork?.name
     });
-    
+
     // 重新初始化支付监听器
     initializePaymentListener().then(() => {
         addWebSocketDebugMessage('✅ Payment monitoring restarted successfully', 'success', {
@@ -243,7 +243,7 @@ function restartPaymentMonitoring() {
             isActive: paymentListenerWS?.isActive || false,
             wsConnected: window.blockchainManager?.wsMonitor?.isConnected || false
         });
-        
+
         // 记录监听目标信息
         addWebSocketDebugMessage('Payment monitoring targets configured', 'info', {
             targetAddress: paymentData.walletAddress,
@@ -252,7 +252,7 @@ function restartPaymentMonitoring() {
             network: paymentData.selectedNetwork?.name,
             chainId: paymentData.selectedNetwork?.chainId
         });
-        
+
     }).catch(error => {
         addWebSocketDebugMessage('❌ Failed to restart payment monitoring', 'error', {
             error: error.message,
@@ -268,19 +268,19 @@ function setupWebSocketMessageInterceptor() {
     if (!window.blockchainManager || !window.blockchainManager.wsMonitor) {
         return;
     }
-    
+
     const wsMonitor = window.blockchainManager.wsMonitor;
-    
+
     // 拦截 WebSocket 连接事件
     const originalConnect = wsMonitor.connect.bind(wsMonitor);
-    wsMonitor.connect = async function(...args) {
+    wsMonitor.connect = async function (...args) {
         addWebSocketDebugMessage('Initiating WebSocket connection...', 'websocket', {
             endpoints: this.wsEndpoints?.length || 0,
             currentEndpoint: this.currentEndpointIndex
         });
-        
+
         const result = await originalConnect(...args);
-        
+
         // 记录连接结果
         if (result && this.ws) {
             addWebSocketDebugMessage('✅ WebSocket connection attempt successful', 'success', {
@@ -302,14 +302,14 @@ function setupWebSocketMessageInterceptor() {
                 timestamp: new Date().toISOString()
             });
         }
-        
+
         if (result && this.ws) {
             // 拦截 WebSocket 消息
             const originalOnMessage = this.ws.onmessage;
-            this.ws.onmessage = function(event) {
+            this.ws.onmessage = function (event) {
                 try {
                     const data = JSON.parse(event.data);
-                    
+
                     // 检测心跳消息
                     if (data.type === 'ping' || data.type === 'pong') {
                         addWebSocketDebugMessage(`💓 Heartbeat ${data.type}`, 'heartbeat', {
@@ -324,7 +324,7 @@ function setupWebSocketMessageInterceptor() {
                         const isBlockData = data.params?.result?.number;
                         const messageType = isBlockData ? 'block' : 'transaction';
                         const messageIcon = isBlockData ? '🧱' : '💰';
-                        
+
                         addWebSocketDebugMessage(`${messageIcon} Subscription message`, messageType, {
                             subscription: data.params?.subscription,
                             blockNumber: isBlockData ? parseInt(data.params.result.number, 16) : undefined,
@@ -361,18 +361,18 @@ function setupWebSocketMessageInterceptor() {
                         parseError: e.message
                     });
                 }
-                
+
                 if (originalOnMessage) {
                     originalOnMessage.call(this, event);
                 }
             };
-            
+
             // 拦截 WebSocket 发送
             const originalSend = this.ws.send.bind(this.ws);
-            this.ws.send = function(data) {
+            this.ws.send = function (data) {
                 try {
                     const parsedData = JSON.parse(data);
-                    
+
                     // 检测心跳消息
                     if (parsedData.type === 'ping' || parsedData.type === 'pong') {
                         addWebSocketDebugMessage(`💓 Sending heartbeat ${parsedData.type}`, 'heartbeat', {
@@ -416,12 +416,12 @@ function setupWebSocketMessageInterceptor() {
                         parseError: e.message
                     });
                 }
-                
+
                 return originalSend(data);
             };
-            
+
             // 监听连接状态变化
-            this.ws.onopen = function(event) {
+            this.ws.onopen = function (event) {
                 const wsMonitor = window.blockchainManager?.wsMonitor;
                 addWebSocketDebugMessage('🟢 WebSocket connection established', 'success', {
                     readyState: this.readyState,
@@ -431,12 +431,12 @@ function setupWebSocketMessageInterceptor() {
                     endpointIndex: wsMonitor?.currentEndpointIndex,
                     timestamp: new Date().toISOString()
                 });
-                
+
                 // 更新按钮状态
                 updateWebSocketControlButton();
             };
-            
-            this.ws.onclose = function(event) {
+
+            this.ws.onclose = function (event) {
                 const wsMonitor = window.blockchainManager?.wsMonitor;
                 const closeReasons = {
                     1000: 'Normal closure',
@@ -447,7 +447,7 @@ function setupWebSocketMessageInterceptor() {
                     1011: 'Server error',
                     1012: 'Service restart'
                 };
-                
+
                 addWebSocketDebugMessage('🔴 WebSocket connection closed', 'warning', {
                     code: event.code,
                     reason: event.reason || closeReasons[event.code] || 'Unknown reason',
@@ -455,20 +455,20 @@ function setupWebSocketMessageInterceptor() {
                     endpoint: wsMonitor?.wsEndpoints?.[wsMonitor?.currentEndpointIndex]?.name || 'Unknown',
                     timestamp: new Date().toISOString()
                 });
-                
+
                 // 更新按钮状态
                 updateWebSocketControlButton();
             };
-            
-            this.ws.onerror = function(event) {
+
+            this.ws.onerror = function (event) {
                 const wsMonitor = window.blockchainManager?.wsMonitor;
                 const readyStateNames = {
                     0: 'CONNECTING',
-                    1: 'OPEN', 
+                    1: 'OPEN',
                     2: 'CLOSING',
                     3: 'CLOSED'
                 };
-                
+
                 addWebSocketDebugMessage('❌ WebSocket error occurred', 'error', {
                     type: event.type,
                     readyState: this.readyState,
@@ -482,7 +482,7 @@ function setupWebSocketMessageInterceptor() {
                     timestamp: new Date().toISOString(),
                     errorContext: 'Connection error during operation'
                 });
-                
+
                 // 如果是连接阶段的错误，记录更多详细信息
                 if (this.readyState === 0) { // CONNECTING
                     addWebSocketDebugMessage('🔴 Connection establishment failed', 'error', {
@@ -500,7 +500,7 @@ function setupWebSocketMessageInterceptor() {
                 }
             };
         }
-        
+
         return result;
     };
 }
@@ -509,10 +509,10 @@ function setupWebSocketMessageInterceptor() {
 function updateWebSocketControlButton() {
     const button = document.getElementById('ws-main-control-button');
     if (!button) return;
-    
+
     if (window.blockchainManager && window.blockchainManager.wsMonitor) {
         const wsMonitor = window.blockchainManager.wsMonitor;
-        
+
         if (wsMonitor.isConnected) {
             button.textContent = '🔌 Disconnect';
             button.style.background = '#dc3545';
@@ -583,7 +583,7 @@ class PaymentListenerWS {
         try {
             addWebSocketDebugMessage('Initializing WebSocket connection...', 'websocket');
             console.log('🔌 [PaymentListenerWS] Checking blockchain manager...');
-            
+
             if (!window.blockchainManager) {
                 console.error('❌ [PaymentListenerWS] BlockchainManager not available');
                 addWebSocketDebugMessage('BlockchainManager not available', 'error');
@@ -593,7 +593,7 @@ class PaymentListenerWS {
             addWebSocketDebugMessage('BlockchainManager found', 'success');
             console.log('✅ [PaymentListenerWS] BlockchainManager found');
             console.log('🔌 [PaymentListenerWS] Checking WebSocket monitor...');
-            
+
             if (!window.blockchainManager.wsMonitor) {
                 console.error('❌ [PaymentListenerWS] WebSocket monitor not available');
                 addWebSocketDebugMessage('WebSocket monitor not available', 'error');
@@ -602,7 +602,7 @@ class PaymentListenerWS {
 
             addWebSocketDebugMessage('WebSocket monitor found', 'success');
             console.log('✅ [PaymentListenerWS] WebSocket monitor found');
-            
+
             // 显示连接详情
             const wsMonitor = window.blockchainManager.wsMonitor;
             const connectionDetails = {
@@ -621,10 +621,10 @@ class PaymentListenerWS {
 
             // 记录连接开始时间
             const connectionStartTime = Date.now();
-            
+
             // 尝试连接 WebSocket
             const wsConnected = await window.blockchainManager.wsMonitor.connect();
-            
+
             const connectionDuration = Date.now() - connectionStartTime;
 
             if (!wsConnected) {
@@ -636,7 +636,7 @@ class PaymentListenerWS {
                     lastAttemptedEndpoint: wsMonitor.wsEndpoints?.[wsMonitor.currentEndpointIndex]?.name || 'Unknown',
                     possibleIssues: [
                         'All endpoints are down',
-                        'Network connectivity problems', 
+                        'Network connectivity problems',
                         'Firewall blocking WebSocket connections',
                         'Invalid endpoint configurations'
                     ],
@@ -657,7 +657,7 @@ class PaymentListenerWS {
                 timestamp: new Date().toISOString()
             });
             console.log('✅ [PaymentListenerWS] WebSocket connection successful');
-            
+
             // 初始化心跳监控
             this.initializeHeartbeatMonitoring(wsMonitor);
 
@@ -684,7 +684,7 @@ class PaymentListenerWS {
                     this.handlePaymentEvent('progress', data);
                 }
             };
-            
+
             addWebSocketDebugMessage('Starting payment monitoring...', 'websocket', {
                 paymentId: this.paymentData.paymentId,
                 token: monitoringConfig.tokenSymbol,
@@ -692,7 +692,7 @@ class PaymentListenerWS {
                 receiver: monitoringConfig.receiverAddress,
                 timeout: monitoringConfig.timeout / 1000 + 's'
             });
-            
+
             const monitoringStarted = window.blockchainManager.startPaymentMonitoring(
                 this.paymentData.paymentId, // 第一个参数：paymentId
                 monitoringConfig
@@ -724,7 +724,7 @@ class PaymentListenerWS {
     // 处理支付事件 (WebSocket 专用)
     handlePaymentEvent(eventType, eventData) {
         console.log(`📨 [PaymentListenerWS] WebSocket event: ${eventType}`, eventData);
-        
+
         // 记录所有事件到调试面板
         addWebSocketDebugMessage(`Event: ${eventType}`, 'message', eventData);
 
@@ -741,41 +741,41 @@ class PaymentListenerWS {
             case 'progress':
                 let progressMessage = 'Monitoring for payment...';
                 let progressDetails = {};
-                
+
                 if (eventData.blockNumber) {
                     progressMessage = `Processing block ${eventData.blockNumber}`;
                     progressDetails.blockNumber = eventData.blockNumber;
                     progressDetails.blockHash = eventData.blockHash;
                     progressDetails.timestamp = eventData.timestamp;
-                    
+
                     // 更新区块检查计数
                     const blocksCheckedElement = document.getElementById('blocks-checked');
                     if (blocksCheckedElement) {
                         const currentCount = parseInt(blocksCheckedElement.textContent) || 0;
                         blocksCheckedElement.textContent = currentCount + 1;
                     }
-                    
+
                     addWebSocketDebugMessage(`New block received`, 'block', progressDetails);
                 } else if (eventData.transactionsScanned) {
                     progressMessage = `Scanned ${eventData.transactionsScanned} transactions`;
                     progressDetails.transactionsScanned = eventData.transactionsScanned;
                     progressDetails.relevantTransactions = eventData.relevantTransactions || 0;
-                    
+
                     addWebSocketDebugMessage(`Transactions scanned`, 'transaction', progressDetails);
                 } else if (eventData.heartbeat) {
                     progressMessage = 'WebSocket heartbeat';
                     progressDetails.heartbeat = true;
                     progressDetails.timestamp = new Date().toISOString();
-                    
+
                     addWebSocketDebugMessage('Heartbeat received', 'heartbeat', progressDetails);
                 } else if (eventData.subscription) {
                     progressMessage = 'Subscription event';
                     progressDetails.subscription = eventData.subscription;
                     progressDetails.data = eventData.data;
-                    
+
                     addWebSocketDebugMessage('Subscription event', 'websocket', progressDetails);
                 }
-                
+
                 // 更新消息匹配计数
                 if (eventData.messagesMatched !== undefined) {
                     const messagesMatchedElement = document.getElementById('ws-messages-matched');
@@ -784,7 +784,7 @@ class PaymentListenerWS {
                     }
                     progressDetails.messagesMatched = eventData.messagesMatched;
                 }
-                
+
                 this.onStatusUpdate('websocket', 'monitoring', progressMessage);
                 break;
 
@@ -937,13 +937,13 @@ class PaymentListenerWS {
     // 初始化心跳监控
     initializeHeartbeatMonitoring(wsMonitor) {
         if (!wsMonitor || !wsMonitor.ws) return;
-        
+
         addWebSocketDebugMessage('🫀 Initializing heartbeat monitoring...', 'heartbeat', {
             endpoint: wsMonitor.wsEndpoints?.[wsMonitor.currentEndpointIndex]?.name || 'Unknown',
             monitoringInterval: '30 seconds',
             timeoutThreshold: '60 seconds'
         });
-        
+
         // 清除之前的心跳监控
         if (this.heartbeatInterval) {
             clearInterval(this.heartbeatInterval);
@@ -951,15 +951,15 @@ class PaymentListenerWS {
         if (this.heartbeatTimeout) {
             clearTimeout(this.heartbeatTimeout);
         }
-        
+
         this.lastHeartbeatTime = Date.now();
         this.heartbeatMissedCount = 0;
-        
+
         // 设置心跳检测间隔 (每30秒)
         this.heartbeatInterval = setInterval(() => {
             const now = Date.now();
             const timeSinceLastHeartbeat = now - this.lastHeartbeatTime;
-            
+
             if (timeSinceLastHeartbeat > 60000) { // 60秒没有心跳
                 this.heartbeatMissedCount++;
                 addWebSocketDebugMessage('⚠️ Heartbeat timeout detected', 'warning', {
@@ -968,7 +968,7 @@ class PaymentListenerWS {
                     threshold: '60s',
                     connectionState: wsMonitor.ws?.readyState
                 });
-                
+
                 if (this.heartbeatMissedCount >= 3) {
                     addWebSocketDebugMessage('💔 Connection appears dead - multiple heartbeat timeouts', 'error', {
                         missedCount: this.heartbeatMissedCount,
@@ -987,13 +987,13 @@ class PaymentListenerWS {
                 }
             }
         }, 30000); // 每30秒检查一次
-        
+
         // 监听WebSocket消息以更新心跳时间
         const originalOnMessage = wsMonitor.ws.onmessage;
         wsMonitor.ws.onmessage = (event) => {
             // 更新最后心跳时间
             this.lastHeartbeatTime = Date.now();
-            
+
             // 检查是否是心跳消息
             try {
                 const data = JSON.parse(event.data);
@@ -1007,7 +1007,7 @@ class PaymentListenerWS {
             } catch (e) {
                 // 不是JSON消息，可能是其他类型的心跳
             }
-            
+
             // 调用原始处理函数
             if (originalOnMessage) {
                 originalOnMessage.call(wsMonitor.ws, event);
@@ -1020,7 +1020,7 @@ class PaymentListenerWS {
         console.log('🛑 [PaymentListenerWS] Stopping WebSocket payment monitoring...');
 
         this.isActive = false;
-        
+
         // 清理心跳监控
         if (this.heartbeatInterval) {
             clearInterval(this.heartbeatInterval);
@@ -1054,33 +1054,33 @@ class PaymentListenerWS {
 document.addEventListener('DOMContentLoaded', function () {
     // 页面加载时立即开始记录调试信息
     addWebSocketDebugMessage('Page loaded, initializing WebSocket monitoring...', 'info');
-    
+
     loadPaymentData();
     initializeQRCodePage();
-    
+
     // 初始化WebSocket UI状态
     setTimeout(() => {
         updateWebSocketStatusInfo();
         updateMonitoringControlButton(); // 初始化监控控制按钮状态
-        
+
         // 设置 WebSocket 消息拦截器
         setupWebSocketMessageInterceptor();
         addWebSocketDebugMessage('WebSocket message interceptor initialized', 'websocket');
-        
+
         // 定期更新WebSocket状态 (每2秒)
         setInterval(() => {
             updateWebSocketStatusInfo();
             updateMonitoringControlButton(); // 定期更新按钮状态
         }, 2000);
     }, 500);
-    
+
     startWebSocketMonitoring();
 });
 
 // 加载支付数据
 function loadPaymentData() {
     console.log('📊 [QRCodeWS] Loading payment data...');
-    
+
     // 优先从支付处理器获取数据
     if (typeof window.paymentHandler !== 'undefined') {
         console.log('🔍 [QRCodeWS] Checking payment handler...');
@@ -1108,7 +1108,7 @@ function loadPaymentData() {
     } else {
         // 如果没有支付数据，创建测试数据或重定向
         console.log('⚠️ [QRCodeWS] No payment data found');
-        
+
         // 在开发环境中创建测试数据
         if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
             console.log('🧪 [QRCodeWS] Creating test payment data for development');
@@ -1155,7 +1155,7 @@ function displayPaymentInfo() {
         const itemName = productInfo ? productInfo.description : `Food Donation (${paymentData.product})`;
 
         itemElement.textContent = itemName;
-        amountElement.textContent = `${paymentData.price.toFixed(2)}`;
+        amountElement.textContent = `$${paymentData.price.toFixed(2)}`;
 
         // 显示选择的支付方式和网络
         if (paymentData.selectedPayment) {
@@ -1293,13 +1293,13 @@ function initializeQRCodePage() {
 async function startWebSocketMonitoring() {
     console.log('🔌 [QRCodeWS] Starting WebSocket monitoring...');
     console.log('   paymentData:', paymentData);
-    
+
     if (!paymentData) {
         console.error('❌ [QRCodeWS] No payment data available');
         updatePaymentStatus('error', 'No payment data available');
         return;
     }
-    
+
     if (!paymentData.selectedPayment) {
         console.error('❌ [QRCodeWS] No selected payment method');
         updatePaymentStatus('error', 'No payment method selected');
@@ -1310,7 +1310,7 @@ async function startWebSocketMonitoring() {
     console.log('   PaymentId:', paymentData.paymentId);
     console.log('   Amount:', paymentData.price);
     console.log('   Token:', paymentData.selectedPayment.symbol);
-    
+
     // 添加详细的初始化调试信息
     const initDetails = {
         paymentId: paymentData.paymentId,
@@ -1322,7 +1322,7 @@ async function startWebSocketMonitoring() {
         timestamp: new Date().toISOString()
     };
     addWebSocketDebugMessage('Starting WebSocket monitoring initialization', 'websocket', initDetails);
-    
+
     updatePaymentStatus('connecting', 'Connecting to blockchain');
     updateMonitoringStatus('Blockchain', 'Connecting...');
 
@@ -1332,7 +1332,7 @@ async function startWebSocketMonitoring() {
         console.log('   window.blockchainManager:', typeof window.blockchainManager);
         console.log('   window.blockchainManagerWS:', typeof window.blockchainManagerWS);
         console.log('   window.webSocketMonitor:', typeof window.webSocketMonitor);
-        
+
         const managerStatus = {
             blockchainManager: typeof window.blockchainManager,
             blockchainManagerWS: typeof window.blockchainManagerWS,
@@ -1340,10 +1340,10 @@ async function startWebSocketMonitoring() {
             timestamp: new Date().toISOString()
         };
         addWebSocketDebugMessage('Checking blockchain manager availability', 'websocket', managerStatus);
-        
+
         if (typeof window.blockchainManager !== 'undefined') {
             console.log('✅ [QRCodeWS] Blockchain manager found');
-            
+
             const managerDetails = {
                 isConnected: window.blockchainManager.isConnected,
                 hasWsMonitor: !!window.blockchainManager.wsMonitor,
@@ -1354,12 +1354,12 @@ async function startWebSocketMonitoring() {
             addWebSocketDebugMessage('Blockchain manager found', 'success', managerDetails);
             console.log('   isConnected:', window.blockchainManager.isConnected);
             console.log('   wsMonitor:', window.blockchainManager.wsMonitor ? 'exists' : 'null');
-            
+
             if (window.blockchainManager.wsMonitor) {
                 console.log('   wsMonitor.isConnected:', window.blockchainManager.wsMonitor.isConnected);
                 console.log('   wsMonitor.connectionState:', window.blockchainManager.wsMonitor.connectionState);
             }
-            
+
             initializePaymentListener();
         } else {
             console.log('⏳ [QRCodeWS] Waiting for blockchain manager...');
@@ -1390,7 +1390,7 @@ async function startWebSocketMonitoring() {
 async function initializePaymentListener() {
     try {
         console.log('🎯 [QRCodeWS] Initializing payment listener...');
-        
+
         // 检查监控是否被禁用
         if (!isMonitoringEnabled) {
             addWebSocketDebugMessage('❌ Payment listener initialization skipped - monitoring disabled', 'warning');
@@ -1438,7 +1438,7 @@ async function initializePaymentListener() {
                 }
 
                 updateMonitoringStatus('Blockchain', status, statusDetails);
-                
+
                 // 根据连接状态更新主要状态显示
                 if (status === 'connected' || status === 'monitoring') {
                     updatePaymentStatus('waiting', 'Waiting for payment');
@@ -1473,7 +1473,7 @@ async function initializePaymentListener() {
 
             // 启动监听时间计数器
             startMonitoringTimeCounter();
-            
+
             // 更新 WebSocket 控制按钮状态
             const controlButton = document.getElementById('ws-main-control-button');
             if (controlButton) {
@@ -1574,13 +1574,13 @@ let monitoringTimeInterval = null;
 function updateWebSocketStatusInfo() {
     // 更新连接状态
     updateWebSocketConnectionStatus();
-    
+
     // 更新监控目标信息
     updateWebSocketTargetInfo();
-    
+
     // 更新可用端点信息
     updateWebSocketEndpointsInfo();
-    
+
     // 更新控制按钮状态
     updateWebSocketControlButton();
 }
@@ -1589,12 +1589,12 @@ function updateWebSocketStatusInfo() {
 function updateWebSocketConnectionStatus() {
     const endpointElement = document.getElementById('ws-current-endpoint');
     const statusElement = document.getElementById('ws-connection-status');
-    
+
     if (!endpointElement || !statusElement) return;
-    
+
     if (window.blockchainManager && window.blockchainManager.wsMonitor) {
         const wsMonitor = window.blockchainManager.wsMonitor;
-        
+
         // 更新当前端点
         if (wsMonitor.isConnected && wsMonitor.wsEndpoints && wsMonitor.currentEndpointIndex >= 0) {
             const currentEndpoint = wsMonitor.wsEndpoints[wsMonitor.currentEndpointIndex];
@@ -1604,7 +1604,7 @@ function updateWebSocketConnectionStatus() {
             endpointElement.textContent = 'Not connected';
             endpointElement.style.color = '#6c757d';
         }
-        
+
         // 更新连接状态
         if (wsMonitor.isConnected) {
             statusElement.textContent = 'Connected';
@@ -1629,9 +1629,9 @@ function updateWebSocketTargetInfo() {
     const targetAddressElement = document.getElementById('ws-target-address');
     const expectedAmountElement = document.getElementById('ws-expected-amount');
     const tokenContractElement = document.getElementById('ws-token-contract');
-    
+
     if (!targetAddressElement || !expectedAmountElement || !tokenContractElement) return;
-    
+
     if (paymentData) {
         // 目标地址 - 显示开头和结尾，中间省略
         const receiverAddress = window.BLOCKCHAIN_CONFIG?.receiverAddress || '0xe27577B0e3920cE35f100f66430de0108cb78a04';
@@ -1641,14 +1641,14 @@ function updateWebSocketTargetInfo() {
         };
         targetAddressElement.textContent = formatAddress(receiverAddress);
         targetAddressElement.title = receiverAddress; // 完整地址显示在tooltip中
-        
+
         // 期望金额
         if (paymentData.selectedPayment) {
-            expectedAmountElement.textContent = `${paymentData.price} ${paymentData.selectedPayment.symbol}`;
+            expectedAmountElement.textContent = `$${paymentData.price.toFixed(2)}`;
         } else {
-            expectedAmountElement.textContent = `${paymentData.price} (Unknown token)`;
+            expectedAmountElement.textContent = `$${paymentData.price.toFixed(2)}`;
         }
-        
+
         // 代币合约 - 同样使用省略格式
         if (paymentData.selectedPayment && paymentData.selectedPayment.contract) {
             const contractAddress = paymentData.selectedPayment.contract;
@@ -1668,19 +1668,19 @@ function updateWebSocketTargetInfo() {
 // 更新可用端点信息
 function updateWebSocketEndpointsInfo() {
     const endpointsElement = document.getElementById('ws-backup-endpoints');
-    
+
     if (!endpointsElement) return;
-    
+
     if (window.blockchainManager && window.blockchainManager.wsMonitor && window.blockchainManager.wsMonitor.wsEndpoints) {
         const endpoints = window.blockchainManager.wsMonitor.wsEndpoints;
         const currentIndex = window.blockchainManager.wsMonitor.currentEndpointIndex;
-        
+
         let endpointsText = '';
         endpoints.forEach((endpoint, index) => {
             const status = index === currentIndex ? '🟢 [Active]' : '⚪ [Standby]';
             endpointsText += `${status} ${endpoint.name || `EP${index + 1}`}\n`;
         });
-        
+
         endpointsElement.textContent = endpointsText.trim();
     } else {
         endpointsElement.textContent = 'Endpoints not loaded';
@@ -1690,7 +1690,7 @@ function updateWebSocketEndpointsInfo() {
 // 启动监听时间计数器
 function startMonitoringTimeCounter() {
     monitoringStartTime = Date.now();
-    
+
     const updateMonitoringTime = () => {
         const timeElement = document.getElementById('monitoring-time');
         if (timeElement && monitoringStartTime) {
@@ -1700,7 +1700,7 @@ function startMonitoringTimeCounter() {
             timeElement.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
         }
     };
-    
+
     updateMonitoringTime();
     monitoringTimeInterval = setInterval(updateMonitoringTime, 1000);
 }
@@ -1953,19 +1953,19 @@ function copyAddress() {
 // 刷新状态
 function refreshStatus() {
     console.log('🔄 [QRCodeWS] Refreshing status (UI only)...');
-    
+
     // 获取按钮元素
     const refreshButton = document.querySelector('.refresh-button');
     if (!refreshButton) return;
-    
+
     // 保存原始内容
     const originalContent = refreshButton.innerHTML;
-    
+
     // 显示loading状态 - 只有图标转圈
     refreshButton.innerHTML = '<span style="display: inline-block; animation: spin 1s linear infinite;">🔄</span> Refreshing...';
     refreshButton.disabled = true;
     refreshButton.style.opacity = '0.7';
-    
+
     // 2秒后恢复原状
     setTimeout(() => {
         refreshButton.innerHTML = originalContent;
@@ -1983,7 +1983,7 @@ function toggleMonitoring() {
         console.warn('Monitoring control button not found');
         return;
     }
-    
+
     if (isMonitoringEnabled) {
         // 停止监控
         stopMonitoring();
@@ -1999,15 +1999,15 @@ function stopMonitoring() {
         previousState: 'monitoring',
         reason: 'Manual stop requested'
     });
-    
+
     isMonitoringEnabled = false;
-    
+
     // 停止支付监听器
     if (paymentListenerWS && paymentListenerWS.isActive) {
         paymentListenerWS.stopMonitoring();
         addWebSocketDebugMessage('Payment listener stopped', 'warning');
     }
-    
+
     // 断开WebSocket连接并禁用自动重连
     if (window.blockchainManager && window.blockchainManager.wsMonitor) {
         const wsMonitor = window.blockchainManager.wsMonitor;
@@ -2016,19 +2016,19 @@ function stopMonitoring() {
                 endpoint: wsMonitor.wsEndpoints?.[wsMonitor.currentEndpointIndex]?.name || 'Unknown',
                 autoReconnect: false
             });
-            
+
             // 禁用自动重连
             wsMonitor.autoReconnect = false;
             wsMonitor.disconnect();
         }
     }
-    
+
     // 更新按钮状态
     updateMonitoringControlButton();
-    
+
     // 更新页面状态
     updatePaymentStatus('stopped', 'Disconnected from blockchain');
-    
+
     addWebSocketDebugMessage('✅ Payment monitoring stopped successfully', 'success', {
         monitoringEnabled: false,
         autoReconnect: false
@@ -2041,21 +2041,21 @@ function startMonitoring() {
         previousState: 'stopped',
         reason: 'Manual start requested'
     });
-    
+
     isMonitoringEnabled = true;
-    
+
     // 启用自动重连
     if (window.blockchainManager && window.blockchainManager.wsMonitor) {
         window.blockchainManager.wsMonitor.autoReconnect = true;
     }
-    
+
     // 重新初始化支付监听
     if (paymentData) {
         addWebSocketDebugMessage('Reinitializing payment listener...', 'info', {
             paymentId: paymentData.paymentId,
             targetAddress: paymentData.walletAddress
         });
-        
+
         initializePaymentListener().then(() => {
             addWebSocketDebugMessage('✅ Payment monitoring started successfully', 'success', {
                 monitoringEnabled: true,
@@ -2070,10 +2070,10 @@ function startMonitoring() {
     } else {
         addWebSocketDebugMessage('❌ Cannot start monitoring - no payment data', 'error');
     }
-    
+
     // 更新按钮状态
     updateMonitoringControlButton();
-    
+
     // 更新页面状态
     updatePaymentStatus('connecting', 'Starting monitoring...');
 }
@@ -2082,7 +2082,7 @@ function startMonitoring() {
 function updateMonitoringControlButton() {
     const button = document.getElementById('monitoring-control-button');
     if (!button) return;
-    
+
     if (isMonitoringEnabled) {
         button.textContent = '🛑 Stop Monitoring';
         button.style.background = '#dc3545';
@@ -2127,16 +2127,16 @@ let wsDebugVisible = false;
 function updateWebSocketDebugDisplay() {
     const debugContent = document.getElementById('ws-debug-content');
     if (!debugContent) return;
-    
+
     if (wsDebugMessages.length === 0) {
         debugContent.innerHTML = '<div style="color: #6c757d; font-style: italic;">WebSocket messages will appear here...</div>';
         return;
     }
-    
+
     const messagesHtml = wsDebugMessages.map(msg => {
         let typeColor = '#6c757d';
         let backgroundColor = '#f8f9fa';
-        
+
         switch (msg.type) {
             case 'success':
                 typeColor = '#155724';
@@ -2171,20 +2171,20 @@ function updateWebSocketDebugDisplay() {
                 backgroundColor = '#fff0e6';
                 break;
         }
-        
+
         let detailsHtml = '';
         if (msg.details) {
-            const detailsText = typeof msg.details === 'object' 
-                ? JSON.stringify(msg.details, null, 2) 
+            const detailsText = typeof msg.details === 'object'
+                ? JSON.stringify(msg.details, null, 2)
                 : msg.details;
             detailsHtml = `<div style="color: #6c757d; font-size: 10px; margin-top: 2px; white-space: pre-wrap;">${detailsText}</div>`;
         }
-        
+
         return `<div style="margin-bottom: 4px; padding: 4px 6px; border-radius: 3px; font-size: 11px; line-height: 1.4; background-color: ${backgroundColor}; color: ${typeColor}; border-left: 3px solid ${typeColor};">
             ${msg.fullText}${detailsHtml}
         </div>`;
     }).join('');
-    
+
     debugContent.innerHTML = messagesHtml;
     debugContent.scrollTop = debugContent.scrollHeight;
 }
@@ -2193,9 +2193,9 @@ function updateWebSocketDebugDisplay() {
 function toggleWebSocketDebugInfo() {
     const debugPanel = document.getElementById('ws-debug-messages');
     if (!debugPanel) return;
-    
+
     wsDebugVisible = !wsDebugVisible;
-    
+
     if (wsDebugVisible) {
         debugPanel.style.display = 'block';
         updateWebSocketDebugDisplay();
@@ -2214,10 +2214,10 @@ function clearWebSocketDebugMessages() {
 function updateWebSocketUI(status, message) {
     const connectionStatus = document.getElementById('ws-connection-status');
     const mainControlBtn = document.getElementById('ws-main-control-button');
-    
+
     if (connectionStatus) {
         connectionStatus.textContent = message || status;
-        
+
         // 更新状态颜色
         switch (status) {
             case 'connected':
@@ -2234,7 +2234,7 @@ function updateWebSocketUI(status, message) {
                 break;
         }
     }
-    
+
     // 更新主控制按钮
     if (mainControlBtn) {
         switch (status) {
@@ -2279,12 +2279,12 @@ function handleWebSocketControl() {
         addWebSocketDebugMessage('error', 'WebSocket Monitor not available');
         return;
     }
-    
+
     const wsMonitor = window.blockchainManager.wsMonitor;
     const currentStatus = getWebSocketRealStatus();
-    
+
     addWebSocketDebugMessage('connection', `Control button clicked, current status: ${currentStatus}`);
-    
+
     switch (currentStatus) {
         case 'connected':
             handleDisconnectWebSocket();
@@ -2305,9 +2305,9 @@ function getWebSocketRealStatus() {
     if (!window.blockchainManager || !window.blockchainManager.wsMonitor) {
         return 'error';
     }
-    
+
     const wsMonitor = window.blockchainManager.wsMonitor;
-    
+
     // 检查WebSocket连接状态
     if (wsMonitor.ws) {
         switch (wsMonitor.ws.readyState) {
@@ -2323,7 +2323,7 @@ function getWebSocketRealStatus() {
                 return 'unknown';
         }
     }
-    
+
     return 'disconnected';
 }
 
@@ -2331,20 +2331,20 @@ function getWebSocketRealStatus() {
 function handleConnectWebSocket() {
     console.log('🔌 [Debug] Connecting WebSocket...');
     addWebSocketDebugMessage('connection', 'Initiating WebSocket connection...');
-    
+
     if (!window.blockchainManager || !window.blockchainManager.wsMonitor) {
         console.error('WebSocket Monitor not available');
         updateWebSocketUI('error', 'WebSocket Monitor not available');
         addWebSocketDebugMessage('error', 'WebSocket Monitor not available');
         return;
     }
-    
+
     const wsMonitor = window.blockchainManager.wsMonitor;
     updateWebSocketUI('connecting', 'Connecting...');
-    
+
     // 监听WebSocket事件
     setupWebSocketEventListeners(wsMonitor);
-    
+
     wsMonitor.connect().then(success => {
         if (success) {
             updateWebSocketUI('connected', 'Connected');
@@ -2363,7 +2363,7 @@ function handleConnectWebSocket() {
 
 function handleDisconnectWebSocket() {
     console.log('🔌 [Debug] Disconnecting WebSocket...');
-    
+
     if (!window.blockchainManager || !window.blockchainManager.wsMonitor) {
         console.error('WebSocket Monitor not available');
         addWebSocketDebugMessage('WebSocket Monitor not available for disconnect', 'error', {
@@ -2372,9 +2372,9 @@ function handleDisconnectWebSocket() {
         });
         return;
     }
-    
+
     const wsMonitor = window.blockchainManager.wsMonitor;
-    
+
     // 记录断开前的状态
     addWebSocketDebugMessage('🔌 Initiating WebSocket disconnect...', 'websocket', {
         currentState: wsMonitor.connectionState,
@@ -2383,20 +2383,20 @@ function handleDisconnectWebSocket() {
         readyState: wsMonitor.ws?.readyState,
         hasActivePaymentMonitoring: paymentListenerWS?.isActive || false
     });
-    
+
     // 执行断开
     wsMonitor.disconnect();
-    
+
     // 记录断开后的状态
     addWebSocketDebugMessage('WebSocket disconnect completed', 'warning', {
         newState: wsMonitor.connectionState,
         isConnected: wsMonitor.isConnected,
         reason: 'Manual disconnect via debug controls'
     });
-    
+
     updateWebSocketUI('disconnected', 'Disconnected');
     updatePaymentStatus('error', 'Blockchain disconnected');
-    
+
     addWebSocketDebugMessage('UI and payment status updated after disconnect', 'info', {
         uiStatus: 'disconnected',
         paymentStatus: 'error'
@@ -2406,19 +2406,19 @@ function handleDisconnectWebSocket() {
 // 设置WebSocket事件监听器
 function setupWebSocketEventListeners(wsMonitor) {
     if (!wsMonitor.ws) return;
-    
+
     const ws = wsMonitor.ws;
-    
+
     // 连接打开
     ws.addEventListener('open', (event) => {
         addWebSocketDebugMessage('connection', 'WebSocket connection opened');
     });
-    
+
     // 接收消息
     ws.addEventListener('message', (event) => {
         try {
             const data = JSON.parse(event.data);
-            
+
             // 区分不同类型的消息
             if (data.method === 'eth_subscription') {
                 addWebSocketDebugMessage('message', 'Received subscription message', {
@@ -2439,7 +2439,7 @@ function setupWebSocketEventListeners(wsMonitor) {
             addWebSocketDebugMessage('message', 'Received raw message', { data: event.data });
         }
     });
-    
+
     // 连接关闭
     ws.addEventListener('close', (event) => {
         addWebSocketDebugMessage('close', `WebSocket connection closed`, {
@@ -2448,7 +2448,7 @@ function setupWebSocketEventListeners(wsMonitor) {
             wasClean: event.wasClean
         });
     });
-    
+
     // 连接错误
     ws.addEventListener('error', (event) => {
         addWebSocketDebugMessage('error', 'WebSocket error occurred');
@@ -2468,7 +2468,7 @@ function debugWebSocketStatus() {
 // 测试功能
 function simulatePaymentSuccessForTesting() {
     console.log('🧪 [Test] Simulating payment success...');
-    
+
     // 模拟支付确认数据
     const mockConfirmationData = {
         verificationResult: {
@@ -2485,7 +2485,7 @@ function simulatePaymentSuccessForTesting() {
         blockNumber: 12345678,
         detectionMethod: 'websocket-test'
     };
-    
+
     handlePaymentSuccess({
         paymentId: paymentData ? paymentData.paymentId : 'test-payment',
         confirmations: 1,

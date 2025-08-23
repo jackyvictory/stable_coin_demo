@@ -2,7 +2,7 @@
 
 // 全局变量
 let selectedProduct = null;
-let selectedPrice = 0.01; // 默认选择 Peanut
+let selectedPrice = 1.00; // 默认选择 Peanut
 
 // 页面加载完成后初始化
 document.addEventListener('DOMContentLoaded', function() {
@@ -20,7 +20,7 @@ function initializeProductSelection() {
     if (defaultProduct) {
         defaultProduct.checked = true;
         selectedProduct = 'peanut';
-        selectedPrice = parseFloat(defaultProduct.dataset.price) || 0.01;
+        selectedPrice = parseFloat(defaultProduct.dataset.price) || 1.00;
         updateProductItemStyles();
         console.log('🥜 Default product selected:', selectedProduct, 'Price:', selectedPrice);
     }
@@ -140,31 +140,31 @@ const PRODUCTS = {
     peanut: {
         name: 'Peanut',
         emoji: '🥜',
-        price: 0.01,
+        price: 1.00,
         description: 'Food Donation (Peanut)'
     },
     rice: {
         name: 'Rice',
         emoji: '🍚',
-        price: 0.50,
+        price: 5.00,
         description: 'Food Donation (Rice)'
     },
     bread: {
         name: 'Bread',
         emoji: '🍞',
-        price: 1.00,
+        price: 10.00,
         description: 'Food Donation (Bread)'
     },
     milk: {
         name: 'Milk',
         emoji: '🥛',
-        price: 2.00,
+        price: 20.00,
         description: 'Food Donation (Milk)'
     },
     fruit: {
         name: 'Fruit',
         emoji: '🍎',
-        price: 3.00,
+        price: 30.00,
         description: 'Food Donation (Fruit)'
     }
 };

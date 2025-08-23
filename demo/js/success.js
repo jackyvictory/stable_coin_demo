@@ -53,7 +53,7 @@ function displaySuccessInfo() {
         const itemName = productInfo ? productInfo.description : `Food Donation (${paymentData.product})`;
         
         itemElement.textContent = itemName;
-        amountElement.textContent = `${paymentData.price.toFixed(2)}`;
+        amountElement.textContent = `$${paymentData.price.toFixed(2)}`;
         
         // 显示选择的支付方式和网络
         if (paymentData.selectedPayment) {
