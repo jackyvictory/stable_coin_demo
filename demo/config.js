@@ -4,8 +4,8 @@ const CONFIG = {
   blockchain: {
     rpcUrl: 'https://bsc-dataseed1.binance.org/',
     chainId: 56,
-    confirmations: 3,
-    pollingInterval: 5000 // 5秒轮询一次
+    confirmations: 3
+    // WebSocket 专用版本不需要轮询间隔配置
   },
   
   // 支付配置

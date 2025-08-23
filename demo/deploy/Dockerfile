@@ -22,7 +22,7 @@ FROM base AS app
 WORKDIR /usr/share/nginx/html
 
 # 复制静态文件到 nginx 默认目录
-COPY index.html payment.html qrcode.html success.html ./
+COPY index.html payment-ws.html qrcode-ws.html success-ws.html ./
 COPY css/ ./css/
 COPY js/ ./js/
 COPY images/ ./images/

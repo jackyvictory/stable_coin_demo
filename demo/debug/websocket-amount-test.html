@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebSocket Amount Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        .result {
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 5px;
+            font-family: monospace;
+        }
+        .success { background-color: #d4edda; color: #155724; }
+        .error { background-color: #f8d7da; color: #721c24; }
+        .warning { background-color: #fff3cd; color: #856404; }
+        .info { background-color: #d1ecf1; color: #0c5460; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>WebSocket Amount Test</h1>
+        <p>测试WebSocket消息中的金额解析</p>
+        
+        <div id="results">
+            <!-- 结果将显示在这里 -->
+        </div>
+    </div>
+
+    <script>
+        function addResult(message, type = 'info') {
+            const resultsDiv = document.getElementById('results');
+            const resultDiv = document.createElement('div');
+            resultDiv.className = `result ${type}`;
+            resultDiv.textContent = message;
+            resultsDiv.appendChild(resultDiv);
+        }
+
+        function testAmountParsing() {
+            addResult('=== WebSocket金额解析测试 ===', 'info');
+            
+            // 你提供的WebSocket消息数据
+            const wsData = "0x000000000000000000000000000000000000000000000000002386f26fc10000";
+            
+            addResult(`原始数据: ${wsData}`, 'info');
+            
+            // 转换为BigInt
+            const amountWei = BigInt(wsData);
+            addResult(`BigInt值: ${amountWei.toString()}`, 'info');
+            
+            // 转换为数字
+            const amountNumber = Number(amountWei);
+            addResult(`Number值: ${amountNumber}`, 'info');
+            
+            // 按18位小数计算
+            const decimals = 18;
+            const amount = amountNumber / Math.pow(10, decimals);
+            addResult(`18位小数结果: ${amount} USDT`, 'success');
+            
+            // 验证计算
+            const expectedWei = 10000000000000000000n; // 0.01 USDT in wei (18 decimals)
+            const isCorrect = amountWei === expectedWei;
+            addResult(`计算验证: ${isCorrect ? '✅ 正确' : '❌ 错误'}`, isCorrect ? 'success' : 'error');
+            
+            // 显示十六进制转换步骤
+            addResult('=== 十六进制转换步骤 ===', 'info');
+            addResult(`去掉0x前缀: ${wsData.slice(2)}`, 'info');
+            addResult(`十六进制转十进制: ${parseInt(wsData.slice(2), 16)}`, 'info');
+            addResult(`科学计数法: ${parseInt(wsData.slice(2), 16).toExponential()}`, 'info');
+            
+            // 测试不同的期望金额
+            addResult('=== 金额匹配测试 ===', 'info');
+            const testAmounts = [0.01, 0.1, 1.0, 10.0, 100.0];
+            
+            testAmounts.forEach(expectedAmount => {
+                const diff = Math.abs(amount - expectedAmount);
+                const tolerance = Math.max(0.001, expectedAmount * 0.001);
+                const matches = diff <= tolerance;
+                
+                addResult(`期望 ${expectedAmount} USDT: ${matches ? '✅ 匹配' : '❌ 不匹配'} (差异: ${diff}, 容差: ${tolerance})`, 
+                    matches ? 'success' : 'warning');
+            });
+        }
+
+        // 页面加载时运行测试
+        document.addEventListener('DOMContentLoaded', testAmountParsing);
+    </script>
+</body>
+</html>

@@ -1,7 +1,7 @@
-// Stable Coin - Payment Handler
+// Stable Coin - Payment Handler (WebSocket Version)
 
 // 支付状态枚举
-const PaymentStatus = {
+const PaymentStatusWS = {
     PENDING: 'pending',          // 等待用户选择
     WAITING: 'waiting',          // 等待支付
     MONITORING: 'monitoring',    // 监听中
@@ -11,8 +11,8 @@ const PaymentStatus = {
     FAILED: 'failed'            // 支付失败
 };
 
-// 支付处理器类
-class PaymentHandler {
+// 支付处理器类 (WebSocket 版本)
+class PaymentHandlerWS {
     constructor() {
         this.currentPayment = null;
         this.paymentHistory = new Map();
@@ -30,7 +30,7 @@ class PaymentHandler {
             productName: productInfo.name,
             price: productInfo.price,
             currency: 'USD',
-            status: PaymentStatus.PENDING,
+            status: PaymentStatusWS.PENDING,
             createdAt: timestamp,
             updatedAt: timestamp,
             expiresAt: timestamp + (30 * 60 * 1000), // 30分钟后过期
@@ -42,12 +42,27 @@ class PaymentHandler {
             confirmations: 0,
             verificationResult: null,
             errorMessage: null,
+            
+            // WebSocket 特有字段
+            wsConnectionStatus: 'disconnected',
+            monitoringMode: 'websocket', // WebSocket 专用版本
+            lastProcessedBlock: 0,
+            detectionStartTime: null,
+            
+            // 性能监控
+            performanceMetrics: {
+                detectionTime: 0,
+                blocksScanned: 0,
+                wsReconnects: 0,
+                detectionMethod: 'WebSocket'
+            },
+            
             // 页面导航状态
             currentPage: 'product-selection',
             navigationHistory: ['product-selection']
         };
         
-        console.log('Created payment session:', paymentSession);
+        console.log('Created WebSocket payment session:', paymentSession);
         
         // 保存到当前支付和历史记录
         this.currentPayment = paymentSession;
@@ -57,7 +72,7 @@ class PaymentHandler {
         this.saveToStorage(paymentSession);
         
         // 触发状态变化回调
-        this.triggerStatusChange(paymentId, PaymentStatus.PENDING, null);
+        this.triggerStatusChange(paymentId, PaymentStatusWS.PENDING, null);
         
         return paymentSession;
     }
@@ -84,7 +99,7 @@ class PaymentHandler {
         }
         this.saveToStorage(payment);
         
-        console.log(`Updated payment session ${paymentId}:`, updates);
+        console.log(`Updated WebSocket payment session ${paymentId}:`, updates);
         
         // 如果状态发生变化，触发回调
         if (updates.status && updates.status !== oldStatus) {
@@ -113,14 +128,14 @@ class PaymentHandler {
         const updates = {
             selectedPayment: paymentMethod,
             selectedNetwork: network,
-            status: PaymentStatus.WAITING
+            status: PaymentStatusWS.WAITING
         };
         
         return this.updatePaymentSession(paymentId, updates);
     }
     
-    // 开始支付监听
-    startPaymentMonitoring(paymentId) {
+    // 开始 WebSocket 监听
+    startWebSocketMonitoring(paymentId) {
         const payment = this.getPaymentSession(paymentId);
         if (!payment) {
             console.error(`Payment session ${paymentId} not found`);
@@ -134,41 +149,38 @@ class PaymentHandler {
         
         // 更新状态为监听中
         this.updatePaymentSession(paymentId, {
-            status: PaymentStatus.MONITORING
+            status: PaymentStatusWS.MONITORING,
+            monitoringMode: 'websocket',
+            wsConnectionStatus: 'connecting',
+            detectionStartTime: Date.now()
         });
         
-        // 检查区块链监听器是否可用
-        if (typeof window.blockchainMonitor === 'undefined') {
-            console.error('Blockchain monitor not available for payment monitoring');
-            console.log('Available window objects:', Object.keys(window).filter(key => key.includes('blockchain')));
-            this.updatePaymentSession(paymentId, {
-                status: PaymentStatus.FAILED,
-                errorMessage: 'Blockchain monitor not available'
-            });
+        console.log(`Started WebSocket monitoring for ${paymentId}`);
+        return true;
+    }
+    
+    // WebSocket 专用版本不需要轮询模式切换
+    
+    // 更新 WebSocket 连接状态
+    updateWebSocketStatus(paymentId, status) {
+        const payment = this.getPaymentSession(paymentId);
+        if (!payment) {
             return false;
         }
         
-        // 开始区块链监听
-        const success = window.blockchainMonitor.startPaymentMonitoring(paymentId, {
-            tokenSymbol: payment.selectedPayment.symbol,
-            expectedAmount: payment.price,
-            timeout: payment.expiresAt - Date.now(),
-            
-            onProgress: (data) => this.handleMonitoringProgress(paymentId, data),
-            onSuccess: (data) => this.handleMonitoringSuccess(paymentId, data),
-            onError: (data) => this.handleMonitoringError(paymentId, data),
-            onTimeout: (data) => this.handleMonitoringTimeout(paymentId, data)
-        });
+        const updates = {
+            wsConnectionStatus: status
+        };
         
-        if (!success) {
-            this.updatePaymentSession(paymentId, {
-                status: PaymentStatus.FAILED,
-                errorMessage: 'Failed to start blockchain monitoring'
-            });
-            return false;
+        // 如果连接成功，增加重连计数
+        if (status === 'connected' && payment.wsConnectionStatus !== 'connected') {
+            updates.performanceMetrics = {
+                ...payment.performanceMetrics,
+                wsReconnects: payment.performanceMetrics.wsReconnects + 1
+            };
         }
         
-        console.log(`Started payment monitoring for ${paymentId}`);
+        this.updatePaymentSession(paymentId, updates);
         return true;
     }
     
@@ -177,7 +189,7 @@ class PaymentHandler {
         console.log(`Payment ${paymentId} monitoring progress:`, data);
         
         const updates = {
-            status: PaymentStatus.MONITORING
+            status: PaymentStatusWS.MONITORING
         };
         
         if (data.transaction) {
@@ -188,6 +200,16 @@ class PaymentHandler {
             updates.confirmations = data.confirmations;
         }
         
+        if (data.blocksScanned !== undefined) {
+            const payment = this.getPaymentSession(paymentId);
+            if (payment) {
+                updates.performanceMetrics = {
+                    ...payment.performanceMetrics,
+                    blocksScanned: payment.performanceMetrics.blocksScanned + data.blocksScanned
+                };
+            }
+        }
+        
         this.updatePaymentSession(paymentId, updates);
     }
     
@@ -195,12 +217,25 @@ class PaymentHandler {
     handleMonitoringSuccess(paymentId, data) {
         console.log(`Payment ${paymentId} confirmed:`, data);
         
+        const payment = this.getPaymentSession(paymentId);
+        if (!payment) {
+            return;
+        }
+        
+        // 计算检测时间
+        const detectionTime = payment.detectionStartTime ? 
+            Date.now() - payment.detectionStartTime : 0;
+        
         const updates = {
-            status: PaymentStatus.CONFIRMED,
+            status: PaymentStatusWS.CONFIRMED,
             txHash: data.transaction?.transactionHash,
             confirmations: data.confirmations,
             verificationResult: data.verificationResult,
-            confirmedAt: Date.now()
+            confirmedAt: Date.now(),
+            performanceMetrics: {
+                ...payment.performanceMetrics,
+                detectionTime: detectionTime
+            }
         };
         
         this.updatePaymentSession(paymentId, updates);
@@ -216,7 +251,7 @@ class PaymentHandler {
         console.error(`Payment ${paymentId} monitoring error:`, data);
         
         this.updatePaymentSession(paymentId, {
-            status: PaymentStatus.FAILED,
+            status: PaymentStatusWS.FAILED,
             errorMessage: data.error
         });
     }
@@ -226,7 +261,7 @@ class PaymentHandler {
         console.log(`Payment ${paymentId} monitoring timeout:`, data);
         
         this.updatePaymentSession(paymentId, {
-            status: PaymentStatus.EXPIRED,
+            status: PaymentStatusWS.EXPIRED,
             expiredAt: Date.now()
         });
     }
@@ -234,15 +269,15 @@ class PaymentHandler {
     // 完成支付
     completePayment(paymentId) {
         const payment = this.updatePaymentSession(paymentId, {
-            status: PaymentStatus.COMPLETED,
+            status: PaymentStatusWS.COMPLETED,
             completedAt: Date.now()
         });
         
         if (payment) {
             console.log(`Payment ${paymentId} completed successfully`);
             
-            // 导航到成功页面
-            this.navigateToPage('success');
+            // 导航到 WebSocket 版本的成功页面
+            window.location.href = 'success-ws.html';
         }
         
         return payment;
@@ -251,21 +286,16 @@ class PaymentHandler {
     // 取消支付
     cancelPayment(paymentId, reason = 'User cancelled') {
         const payment = this.updatePaymentSession(paymentId, {
-            status: PaymentStatus.FAILED,
+            status: PaymentStatusWS.FAILED,
             errorMessage: reason,
             cancelledAt: Date.now()
         });
-        
-        // 停止区块链监听
-        if (typeof window.blockchainMonitor !== 'undefined') {
-            window.blockchainMonitor.stopPaymentMonitoring(paymentId);
-        }
         
         console.log(`Payment ${paymentId} cancelled: ${reason}`);
         return payment;
     }
     
-    // 页面导航管理
+    // 页面导航管理 (WebSocket 版本)
     navigateToPage(pageName, paymentId = null) {
         const payment = paymentId ? this.getPaymentSession(paymentId) : this.currentPayment;
         
@@ -279,43 +309,20 @@ class PaymentHandler {
             });
         }
         
-        // 执行页面跳转
+        // 执行页面跳转 (WebSocket 版本)
         const pageUrls = {
             'product-selection': 'index.html',
-            'payment-selection': 'payment.html',
-            'qr-code': 'qrcode.html',
-            'success': 'success.html'
+            'payment-selection': 'payment-ws.html',
+            'qr-code': 'qrcode-ws.html',
+            'success': 'success-ws.html'
         };
         
         const url = pageUrls[pageName];
         if (url && typeof window !== 'undefined') {
-            console.log(`Navigating to ${pageName} (${url})`);
+            console.log(`Navigating to ${pageName} (${url}) - WebSocket version`);
             window.location.href = url;
         } else {
             console.error(`Unknown page: ${pageName}`);
-        }
-    }
-    
-    // 获取导航历史
-    getNavigationHistory(paymentId = null) {
-        const payment = paymentId ? this.getPaymentSession(paymentId) : this.currentPayment;
-        return payment ? payment.navigationHistory : [];
-    }
-    
-    // 返回上一页
-    goBack(paymentId = null) {
-        const payment = paymentId ? this.getPaymentSession(paymentId) : this.currentPayment;
-        
-        if (payment && payment.navigationHistory.length > 1) {
-            // 移除当前页面
-            payment.navigationHistory.pop();
-            // 获取上一页
-            const previousPage = payment.navigationHistory[payment.navigationHistory.length - 1];
-            
-            this.navigateToPage(previousPage, payment.paymentId);
-        } else {
-            // 默认返回首页
-            this.navigateToPage('product-selection');
         }
     }
     
@@ -379,7 +386,7 @@ class PaymentHandler {
         
         // 触发全局事件
         if (typeof window !== 'undefined' && window.dispatchEvent) {
-            const event = new CustomEvent('paymentStatusChanged', {
+            const event = new CustomEvent('paymentStatusChangedWS', {
                 detail: {
                     paymentId: paymentId,
                     newStatus: newStatus,
@@ -395,7 +402,7 @@ class PaymentHandler {
     generatePaymentId() {
         const timestamp = Date.now();
         const random = Math.random().toString(36).substr(2, 9);
-        return `pay_${timestamp}_${random}`;
+        return `payws_${timestamp}_${random}`;
     }
     
     // 保存到存储
@@ -418,7 +425,7 @@ class PaymentHandler {
                     this.currentPayment = payment;
                     this.paymentHistory.set(payment.paymentId, payment);
                     
-                    console.log('Loaded payment from storage:', payment);
+                    console.log('Loaded WebSocket payment from storage:', payment);
                     return payment;
                 } catch (error) {
                     console.error('Error loading payment from storage:', error);
@@ -447,11 +454,18 @@ class PaymentHandler {
             confirmed: 0,
             completed: 0,
             expired: 0,
-            failed: 0
+            failed: 0,
+            websocketMode: 0,
+            // WebSocket 专用版本
         };
         
         for (const payment of this.paymentHistory.values()) {
             stats[payment.status] = (stats[payment.status] || 0) + 1;
+            
+            if (payment.monitoringMode === 'websocket') {
+                stats.websocketMode++;
+            // WebSocket 专用版本不需要轮询统计
+            }
         }
         
         return stats;
@@ -463,10 +477,10 @@ class PaymentHandler {
         let cleanedCount = 0;
         
         for (const [paymentId, payment] of this.paymentHistory) {
-            if (payment.status === PaymentStatus.PENDING || payment.status === PaymentStatus.WAITING) {
+            if (payment.status === PaymentStatusWS.PENDING || payment.status === PaymentStatusWS.WAITING) {
                 if (now > payment.expiresAt) {
                     this.updatePaymentSession(paymentId, {
-                        status: PaymentStatus.EXPIRED,
+                        status: PaymentStatusWS.EXPIRED,
                         expiredAt: now
                     });
                     cleanedCount++;
@@ -475,33 +489,33 @@ class PaymentHandler {
         }
         
         if (cleanedCount > 0) {
-            console.log(`Cleaned up ${cleanedCount} expired payments`);
+            console.log(`Cleaned up ${cleanedCount} expired WebSocket payments`);
         }
         
         return cleanedCount;
     }
 }
 
-// 创建全局支付处理器实例
-const paymentHandler = new PaymentHandler();
+// 创建全局支付处理器实例 (WebSocket 版本)
+const paymentHandlerWS = new PaymentHandlerWS();
 
 // 导出到全局
 if (typeof window !== 'undefined') {
-    window.PaymentStatus = PaymentStatus;
-    window.PaymentHandler = PaymentHandler;
-    window.paymentHandler = paymentHandler;
+    window.PaymentStatusWS = PaymentStatusWS;
+    window.PaymentHandlerWS = PaymentHandlerWS;
+    window.paymentHandler = paymentHandlerWS; // 使用相同的全局名称以保持兼容性
     
     // 页面加载时尝试恢复支付状态
     document.addEventListener('DOMContentLoaded', () => {
-        paymentHandler.loadFromStorage();
-        paymentHandler.cleanupExpiredPayments();
+        paymentHandlerWS.loadFromStorage();
+        paymentHandlerWS.cleanupExpiredPayments();
     });
     
     // 页面卸载时清理
     window.addEventListener('beforeunload', () => {
         // 停止所有监听
-        if (typeof window.blockchainMonitor !== 'undefined') {
-            window.blockchainMonitor.stopAllMonitoring();
+        if (typeof window.blockchainMonitorWS !== 'undefined') {
+            window.blockchainMonitorWS.stopAllMonitoring();
         }
     });
 }

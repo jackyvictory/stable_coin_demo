@@ -33,4 +33,4 @@ e. 复刻的所有内容，将 imsafu 的文字替换为 EVO Payment，将 imsaf
 3.点击 GetBlockNumber+GetGetPastEvents 时，先触发 GetBlockNumber 获取最新的区块 ID，然后计算本地上次记录的区块ID与最新区块ID之间的差值，调用 rpc 获取差值的区块ID的交易详情
 
 
-
+注意编码规则：所有调试代码放到 demo/debug 目录中，不要产生过程的 .md 总结文档

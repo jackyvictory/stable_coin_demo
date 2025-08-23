@@ -1,0 +1,545 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebSocket 支付流程调试</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .debug-section {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .debug-title {
+            color: #333;
+            border-bottom: 2px solid #007bff;
+            padding-bottom: 10px;
+            margin-bottom: 15px;
+        }
+        .debug-button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+            font-size: 12px;
+        }
+        .debug-button:hover {
+            background: #0056b3;
+        }
+        .success-button {
+            background: #28a745;
+        }
+        .success-button:hover {
+            background: #1e7e34;
+        }
+        .warning-button {
+            background: #ffc107;
+            color: #212529;
+        }
+        .warning-button:hover {
+            background: #e0a800;
+        }
+        .error-button {
+            background: #dc3545;
+        }
+        .error-button:hover {
+            background: #c82333;
+        }
+        .log-container {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            padding: 15px;
+            margin-top: 15px;
+            max-height: 300px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 11px;
+        }
+        .log-entry {
+            margin-bottom: 3px;
+            padding: 1px 0;
+        }
+        .log-error {
+            color: #dc3545;
+        }
+        .log-success {
+            color: #28a745;
+        }
+        .log-info {
+            color: #007bff;
+        }
+        .log-warning {
+            color: #ffc107;
+        }
+        .status-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+        .status-item {
+            padding: 10px;
+            border-radius: 4px;
+            border: 1px solid #dee2e6;
+            background: #f8f9fa;
+        }
+        .status-label {
+            font-weight: bold;
+            font-size: 12px;
+            color: #666;
+        }
+        .status-value {
+            font-size: 14px;
+            color: #333;
+            margin-top: 5px;
+        }
+        .flow-step {
+            padding: 10px;
+            margin: 5px 0;
+            border-left: 4px solid #dee2e6;
+            background: #f8f9fa;
+        }
+        .flow-step.active {
+            border-left-color: #007bff;
+            background: #e3f2fd;
+        }
+        .flow-step.success {
+            border-left-color: #28a745;
+            background: #e8f5e8;
+        }
+        .flow-step.error {
+            border-left-color: #dc3545;
+            background: #ffeaea;
+        }
+    </style>
+</head>
+<body>
+    <h1>WebSocket 支付流程调试工具</h1>
+    
+    <div class="debug-section">
+        <h2 class="debug-title">系统状态检查</h2>
+        <div class="status-grid">
+            <div class="status-item">
+                <div class="status-label">区块链管理器</div>
+                <div class="status-value" id="blockchain-manager-status">检查中...</div>
+            </div>
+            <div class="status-item">
+                <div class="status-label">WebSocket 监听器</div>
+                <div class="status-value" id="websocket-monitor-status">检查中...</div>
+            </div>
+            <div class="status-item">
+                <div class="status-label">支付处理器</div>
+                <div class="status-value" id="payment-handler-status">检查中...</div>
+            </div>
+            <div class="status-item">
+                <div class="status-label">支付监听器</div>
+                <div class="status-value" id="payment-listener-status">检查中...</div>
+            </div>
+        </div>
+        
+        <div style="margin-top: 15px;">
+            <button class="debug-button" onclick="checkSystemStatus()">🔍 检查系统状态</button>
+            <button class="debug-button" onclick="initializeSystem()">🚀 初始化系统</button>
+        </div>
+    </div>
+
+    <div class="debug-section">
+        <h2 class="debug-title">支付流程测试</h2>
+        <div id="flow-steps">
+            <div class="flow-step" id="step-1">1. 创建支付数据</div>
+            <div class="flow-step" id="step-2">2. 初始化支付监听器</div>
+            <div class="flow-step" id="step-3">3. 启动 WebSocket 监听</div>
+            <div class="flow-step" id="step-4">4. 模拟 Transfer 事件</div>
+            <div class="flow-step" id="step-5">5. 验证支付匹配</div>
+            <div class="flow-step" id="step-6">6. 触发成功回调</div>
+            <div class="flow-step" id="step-7">7. 跳转到成功页面</div>
+        </div>
+        
+        <div style="margin-top: 15px;">
+            <button class="success-button" onclick="testCompleteFlow()">🧪 测试完整流程</button>
+            <button class="debug-button" onclick="testStepByStep()">📋 逐步测试</button>
+            <button class="warning-button" onclick="simulateTransferEvent()">💰 模拟 Transfer 事件</button>
+            <button class="error-button" onclick="forceJumpToSuccess()">🚀 强制跳转成功页</button>
+        </div>
+    </div>
+
+    <div class="debug-section">
+        <h2 class="debug-title">调试日志</h2>
+        <div class="log-container" id="log-container">
+            <div class="log-entry log-info">调试工具已加载，等待测试...</div>
+        </div>
+        <button class="debug-button" onclick="clearLog()">🗑️ 清空日志</button>
+        <button class="debug-button" onclick="exportLog()">📄 导出日志</button>
+    </div>
+
+    <!-- 加载必要的脚本 -->
+    <script src="../config.js"></script>
+    <script src="../lib/web3.min.js"></script>
+    <script src="../js/blockchain-ws.js"></script>
+    <script src="../js/payment-handler-ws.js"></script>
+
+    <script>
+        // 日志系统
+        function log(message, type = 'info') {
+            const logContainer = document.getElementById('log-container');
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = document.createElement('div');
+            logEntry.className = `log-entry log-${type}`;
+            logEntry.textContent = `[${timestamp}] ${message}`;
+            logContainer.appendChild(logEntry);
+            logContainer.scrollTop = logContainer.scrollHeight;
+            console.log(`[${type.toUpperCase()}] ${message}`);
+        }
+
+        function clearLog() {
+            document.getElementById('log-container').innerHTML = '<div class="log-entry log-info">日志已清空</div>';
+        }
+
+        function exportLog() {
+            const logContainer = document.getElementById('log-container');
+            const logs = Array.from(logContainer.children).map(entry => entry.textContent).join('\\n');
+            const blob = new Blob([logs], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `websocket-debug-${Date.now()}.log`;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        // 状态更新
+        function updateStatus(elementId, status, type = 'info') {
+            const element = document.getElementById(elementId);
+            if (element) {
+                element.textContent = status;
+                element.style.color = type === 'success' ? '#28a745' : 
+                                    type === 'error' ? '#dc3545' : 
+                                    type === 'warning' ? '#ffc107' : '#333';
+            }
+        }
+
+        function updateFlowStep(stepId, status) {
+            const step = document.getElementById(stepId);
+            if (step) {
+                step.className = `flow-step ${status}`;
+            }
+        }
+
+        // 系统检查
+        function checkSystemStatus() {
+            log('开始检查系统状态...', 'info');
+            
+            // 检查区块链管理器
+            if (typeof window.blockchainManager !== 'undefined') {
+                updateStatus('blockchain-manager-status', '✅ 已加载', 'success');
+                log('区块链管理器: 已加载', 'success');
+            } else {
+                updateStatus('blockchain-manager-status', '❌ 未加载', 'error');
+                log('区块链管理器: 未加载', 'error');
+            }
+
+            // 检查 WebSocket 监听器
+            if (typeof window.webSocketMonitor !== 'undefined') {
+                updateStatus('websocket-monitor-status', '✅ 已加载', 'success');
+                log('WebSocket 监听器: 已加载', 'success');
+            } else {
+                updateStatus('websocket-monitor-status', '❌ 未加载', 'error');
+                log('WebSocket 监听器: 未加载', 'error');
+            }
+
+            // 检查支付处理器
+            if (typeof window.paymentHandler !== 'undefined') {
+                updateStatus('payment-handler-status', '✅ 已加载', 'success');
+                log('支付处理器: 已加载', 'success');
+            } else {
+                updateStatus('payment-handler-status', '❌ 未加载', 'error');
+                log('支付处理器: 未加载', 'error');
+            }
+
+            // 检查支付监听器类
+            if (typeof window.PaymentListenerWS !== 'undefined') {
+                updateStatus('payment-listener-status', '✅ 类已定义', 'success');
+                log('支付监听器类: 已定义', 'success');
+            } else {
+                updateStatus('payment-listener-status', '❌ 类未定义', 'error');
+                log('支付监听器类: 未定义', 'error');
+            }
+        }
+
+        function initializeSystem() {
+            log('开始初始化系统...', 'info');
+            
+            try {
+                // 初始化区块链管理器
+                if (typeof window.BlockchainManagerWS !== 'undefined') {
+                    if (!window.blockchainManager) {
+                        window.blockchainManager = new window.BlockchainManagerWS();
+                        log('区块链管理器已初始化', 'success');
+                    }
+                }
+
+                // 初始化支付处理器
+                if (typeof window.PaymentHandlerWS !== 'undefined') {
+                    if (!window.paymentHandler) {
+                        window.paymentHandler = new window.PaymentHandlerWS();
+                        log('支付处理器已初始化', 'success');
+                    }
+                }
+
+                log('系统初始化完成', 'success');
+                checkSystemStatus();
+
+            } catch (error) {
+                log(`系统初始化失败: ${error.message}`, 'error');
+            }
+        }
+
+        // 流程测试
+        function testCompleteFlow() {
+            log('开始测试完整支付流程...', 'info');
+            
+            // 重置所有步骤
+            for (let i = 1; i <= 7; i++) {
+                updateFlowStep(`step-${i}`, '');
+            }
+
+            let currentStep = 1;
+
+            const executeStep = (stepNum, stepName, stepFunction) => {
+                if (currentStep === stepNum) {
+                    updateFlowStep(`step-${stepNum}`, 'active');
+                    log(`执行步骤 ${stepNum}: ${stepName}`, 'info');
+                    
+                    try {
+                        const result = stepFunction();
+                        if (result !== false) {
+                            updateFlowStep(`step-${stepNum}`, 'success');
+                            currentStep++;
+                            
+                            // 继续下一步
+                            setTimeout(() => {
+                                if (currentStep <= 7) {
+                                    executeNextStep();
+                                }
+                            }, 1000);
+                        } else {
+                            updateFlowStep(`step-${stepNum}`, 'error');
+                            log(`步骤 ${stepNum} 失败`, 'error');
+                        }
+                    } catch (error) {
+                        updateFlowStep(`step-${stepNum}`, 'error');
+                        log(`步骤 ${stepNum} 异常: ${error.message}`, 'error');
+                    }
+                }
+            };
+
+            const executeNextStep = () => {
+                switch (currentStep) {
+                    case 1:
+                        executeStep(1, '创建支付数据', createTestPaymentData);
+                        break;
+                    case 2:
+                        executeStep(2, '初始化支付监听器', initializePaymentListener);
+                        break;
+                    case 3:
+                        executeStep(3, '启动 WebSocket 监听', startWebSocketListening);
+                        break;
+                    case 4:
+                        executeStep(4, '模拟 Transfer 事件', simulateTransferEvent);
+                        break;
+                    case 5:
+                        executeStep(5, '验证支付匹配', verifyPaymentMatch);
+                        break;
+                    case 6:
+                        executeStep(6, '触发成功回调', triggerSuccessCallback);
+                        break;
+                    case 7:
+                        executeStep(7, '跳转到成功页面', jumpToSuccessPage);
+                        break;
+                }
+            };
+
+            executeNextStep();
+        }
+
+        // 步骤实现
+        function createTestPaymentData() {
+            const paymentData = {
+                paymentId: 'debug_test_' + Date.now(),
+                product: 'rice',
+                price: 10.00,
+                selectedPayment: { symbol: 'USDT', name: 'Tether USD' },
+                selectedNetwork: { symbol: 'BSC', name: 'BNB Smart Chain' },
+                timestamp: Date.now(),
+                expiresAt: Date.now() + 30 * 60 * 1000,
+                status: 'waiting'
+            };
+
+            sessionStorage.setItem('paymentData', JSON.stringify(paymentData));
+            window.testPaymentData = paymentData;
+            log(`支付数据已创建: ${paymentData.paymentId}`, 'success');
+            return true;
+        }
+
+        function initializePaymentListener() {
+            if (typeof window.PaymentListenerWS === 'undefined') {
+                log('PaymentListenerWS 类未定义', 'error');
+                return false;
+            }
+
+            window.testPaymentListener = new window.PaymentListenerWS();
+            log('支付监听器已初始化', 'success');
+            return true;
+        }
+
+        function startWebSocketListening() {
+            if (!window.testPaymentListener || !window.testPaymentData) {
+                log('支付监听器或支付数据未准备好', 'error');
+                return false;
+            }
+
+            // 模拟启动监听
+            log('WebSocket 监听已启动（模拟）', 'success');
+            return true;
+        }
+
+        function simulateTransferEvent() {
+            log('模拟 Transfer 事件...', 'info');
+            
+            const transferData = {
+                transactionHash: '0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef',
+                blockNumber: 12345678,
+                tokenSymbol: 'USDT',
+                fromAddress: '0x1111111111111111111111111111111111111111',
+                toAddress: '0xe27577B0e3920cE35f100f66430de0108cb78a04',
+                amount: 10.00,
+                amountWei: '10000000000000000000'
+            };
+
+            window.testTransferData = transferData;
+            log(`Transfer 事件已模拟: ${transferData.amount} ${transferData.tokenSymbol}`, 'success');
+            return true;
+        }
+
+        function verifyPaymentMatch() {
+            if (!window.testPaymentData || !window.testTransferData) {
+                log('支付数据或转账数据未准备好', 'error');
+                return false;
+            }
+
+            // 模拟匹配验证
+            const isMatch = window.testPaymentData.price === window.testTransferData.amount &&
+                           window.testPaymentData.selectedPayment.symbol === window.testTransferData.tokenSymbol;
+
+            if (isMatch) {
+                log('支付匹配验证通过', 'success');
+                return true;
+            } else {
+                log('支付匹配验证失败', 'error');
+                return false;
+            }
+        }
+
+        function triggerSuccessCallback() {
+            log('触发成功回调...', 'info');
+            
+            const confirmationData = {
+                paymentId: window.testPaymentData.paymentId,
+                transfer: window.testTransferData,
+                confirmations: 1,
+                detectionTime: 2500,
+                verificationResult: {
+                    verified: true,
+                    matchScore: 100
+                }
+            };
+
+            // 模拟成功回调
+            setTimeout(() => {
+                log('成功回调已触发', 'success');
+                window.testConfirmationData = confirmationData;
+            }, 500);
+
+            return true;
+        }
+
+        function jumpToSuccessPage() {
+            log('准备跳转到成功页面...', 'info');
+            
+            // 更新支付数据
+            if (window.testPaymentData && window.testConfirmationData) {
+                window.testPaymentData.status = 'confirmed';
+                window.testPaymentData.confirmedAt = Date.now();
+                window.testPaymentData.performanceMetrics = {
+                    detectionTime: 2500,
+                    detectionMethod: 'WebSocket'
+                };
+                
+                sessionStorage.setItem('paymentData', JSON.stringify(window.testPaymentData));
+            }
+
+            // 延迟跳转
+            setTimeout(() => {
+                log('跳转到成功页面', 'success');
+                window.location.href = '../success-ws.html';
+            }, 1000);
+
+            return true;
+        }
+
+        function testStepByStep() {
+            log('开始逐步测试...', 'info');
+            // 这里可以实现逐步测试逻辑
+            alert('逐步测试功能待实现');
+        }
+
+        function forceJumpToSuccess() {
+            log('强制跳转到成功页面...', 'warning');
+            
+            // 创建最小的成功数据
+            const successData = {
+                paymentId: 'force_jump_' + Date.now(),
+                product: 'rice',
+                price: 10.00,
+                selectedPayment: { symbol: 'USDT', name: 'Tether USD' },
+                selectedNetwork: { symbol: 'BSC', name: 'BNB Smart Chain' },
+                status: 'confirmed',
+                confirmedAt: Date.now(),
+                performanceMetrics: {
+                    detectionTime: 1000,
+                    detectionMethod: 'WebSocket'
+                }
+            };
+
+            sessionStorage.setItem('paymentData', JSON.stringify(successData));
+            
+            setTimeout(() => {
+                window.location.href = '../success-ws.html';
+            }, 500);
+        }
+
+        // 页面加载时初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            log('WebSocket 支付流程调试工具已加载', 'info');
+            
+            // 延迟检查系统状态
+            setTimeout(() => {
+                checkSystemStatus();
+            }, 1000);
+        });
+    </script>
+</body>
+</html>

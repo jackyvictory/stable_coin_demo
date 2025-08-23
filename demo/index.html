@@ -16,7 +16,7 @@
             <!-- Product Grid -->
             <div class="product-grid" role="radiogroup">
                 <!-- Peanut Product -->
-                <div class="product-item" data-product="peanut" data-price="0.25">
+                <div class="product-item" data-product="peanut" data-price="0.01">
                     <div class="radio-container">
                         <input 
                             class="radio-input" 
@@ -24,14 +24,14 @@
                             type="radio" 
                             name="product-selection" 
                             value="peanut"
-                            data-price="0.25"
+                            data-price="0.01"
                             checked
                         >
                         <span class="radio-control"></span>
                         <label class="product-label" for="product-peanut">
                             <div class="product-content">
                                 <span class="product-emoji">🥜</span>
-                                <span class="product-price">$0.25</span>
+                                <span class="product-price">$0.01</span>
                             </div>
                         </label>
                     </div>
@@ -125,21 +125,21 @@
             <!-- Donation and Payment Section -->
             <div class="donation-payment-section">
                 <div class="avatar-container">
-                    <img alt="avatar" src="./images/avatar.png" class="avatar-image">
+                    <img alt="avatar" src="./images/avatar.jpg" class="avatar-image">
                 </div>
                 <div class="donation-payment-card">
                     <div class="donation-text">
                         <p class="donation-message">The payment you make donates food to the Stable Coin team.</p>
                     </div>
                     <button class="payment-button" id="pay-button" onclick="proceedToPayment()">
-                        Pay With Stable Coin
+                        🔌 Pay With Stable Coin
                     </button>
                 </div>
             </div>
         </div>
     </div>
 
-    <script src="js/payment-handler.js"></script>
+    <script src="js/payment-handler-ws.js"></script>
     <script src="js/main.js"></script></script>
 </body>
 </html>

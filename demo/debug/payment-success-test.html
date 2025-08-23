@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>支付成功跳转测试</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .test-container {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+        .test-button {
+            background: #28a745;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px;
+            transition: all 0.3s;
+        }
+        .test-button:hover {
+            background: #1e7e34;
+            transform: translateY(-2px);
+        }
+        .debug-button {
+            background: #007bff;
+        }
+        .debug-button:hover {
+            background: #0056b3;
+        }
+        .status-display {
+            margin: 20px 0;
+            padding: 15px;
+            border-radius: 6px;
+            font-weight: bold;
+            min-height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .status-waiting {
+            background-color: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeaa7;
+        }
+        .status-processing {
+            background-color: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        .status-success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .status-error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .countdown {
+            font-size: 24px;
+            color: #007bff;
+            margin: 15px 0;
+        }
+        .payment-info {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 6px;
+            margin: 20px 0;
+            text-align: left;
+        }
+        .payment-info h3 {
+            margin-top: 0;
+            color: #333;
+        }
+        .payment-detail {
+            display: flex;
+            justify-content: space-between;
+            margin: 8px 0;
+            padding: 5px 0;
+            border-bottom: 1px solid #dee2e6;
+        }
+        .payment-detail:last-child {
+            border-bottom: none;
+        }
+        .detail-label {
+            font-weight: bold;
+            color: #666;
+        }
+        .detail-value {
+            color: #333;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>💰 支付成功跳转测试</h1>
+        <p>测试 WebSocket 版本监听到交易后的自动跳转功能</p>
+        
+        <div id="status-display" class="status-display status-waiting">
+            点击按钮开始测试支付成功跳转
+        </div>
+        
+        <div class="payment-info" id="payment-info" style="display: none;">
+            <h3>模拟支付信息</h3>
+            <div class="payment-detail">
+                <span class="detail-label">商品:</span>
+                <span class="detail-value">Food Donation (Rice)</span>
+            </div>
+            <div class="payment-detail">
+                <span class="detail-label">金额:</span>
+                <span class="detail-value">$10.00</span>
+            </div>
+            <div class="payment-detail">
+                <span class="detail-label">支付方式:</span>
+                <span class="detail-value">USDT</span>
+            </div>
+            <div class="payment-detail">
+                <span class="detail-label">网络:</span>
+                <span class="detail-value">BSC</span>
+            </div>
+            <div class="payment-detail">
+                <span class="detail-label">PayID:</span>
+                <span class="detail-value" id="payment-id">生成中...</span>
+            </div>
+        </div>
+        
+        <div id="countdown" class="countdown" style="display: none;"></div>
+        
+        <div>
+            <button class="test-button" onclick="testPaymentSuccess()">
+                🎉 测试支付成功
+            </button>
+            
+            <button class="test-button debug-button" onclick="testWithDebugInfo()">
+                🔍 详细调试测试
+            </button>
+            
+            <button class="test-button debug-button" onclick="goToQRPage()">
+                📱 前往二维码页面
+            </button>
+        </div>
+        
+        <div style="margin-top: 30px; font-size: 14px; color: #666;">
+            <p><strong>测试说明:</strong></p>
+            <ul style="text-align: left; max-width: 500px; margin: 0 auto;">
+                <li>点击"测试支付成功"模拟完整的支付确认流程</li>
+                <li>系统会创建模拟的支付数据并触发成功跳转</li>
+                <li>跳转到 success-ws.html 页面显示支付成功信息</li>
+                <li>可以通过"详细调试测试"查看更多技术细节</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        function updateStatus(message, type = 'waiting') {
+            const statusDisplay = document.getElementById('status-display');
+            statusDisplay.textContent = message;
+            statusDisplay.className = `status-display status-${type}`;
+            console.log(`[${type.toUpperCase()}] ${message}`);
+        }
+
+        function showPaymentInfo(paymentData) {
+            const paymentInfo = document.getElementById('payment-info');
+            const paymentIdElement = document.getElementById('payment-id');
+            
+            paymentIdElement.textContent = paymentData.paymentId;
+            paymentInfo.style.display = 'block';
+        }
+
+        function startCountdown(seconds, callback) {
+            const countdownElement = document.getElementById('countdown');
+            countdownElement.style.display = 'block';
+            
+            let remaining = seconds;
+            
+            const updateCountdown = () => {
+                countdownElement.textContent = `${remaining} 秒后自动跳转...`;
+                remaining--;
+                
+                if (remaining < 0) {
+                    countdownElement.style.display = 'none';
+                    callback();
+                } else {
+                    setTimeout(updateCountdown, 1000);
+                }
+            };
+            
+            updateCountdown();
+        }
+
+        function testPaymentSuccess() {
+            updateStatus('开始测试支付成功流程...', 'processing');
+            
+            // 创建完整的支付成功数据
+            const paymentData = {
+                paymentId: 'test_success_' + Date.now(),
+                product: 'rice',
+                price: 10.00,
+                selectedPayment: { 
+                    symbol: 'USDT', 
+                    name: 'Tether USD' 
+                },
+                selectedNetwork: { 
+                    symbol: 'BSC', 
+                    name: 'BNB Smart Chain' 
+                },
+                timestamp: Date.now(),
+                expiresAt: Date.now() + 30 * 60 * 1000,
+                status: 'confirmed',
+                confirmedAt: Date.now(),
+                
+                // WebSocket 特有的性能数据
+                performanceMetrics: {
+                    detectionTime: 2500, // 2.5秒检测时间
+                    detectionMethod: 'WebSocket',
+                    matchScore: 100,
+                    confirmations: 1,
+                    blocksScanned: 1,
+                    wsReconnects: 0
+                },
+                
+                // 验证结果
+                verificationResult: {
+                    verified: true,
+                    transfer: {
+                        transactionHash: '0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef',
+                        blockNumber: 12345678,
+                        formattedAmount: 10.00,
+                        tokenSymbol: 'USDT',
+                        from: '0x1111111111111111111111111111111111111111',
+                        to: '0xe27577B0e3920cE35f100f66430de0108cb78a04'
+                    },
+                    confirmations: 1,
+                    transactionHash: '0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef',
+                    amount: 10.00,
+                    tokenSymbol: 'USDT',
+                    detectionMethod: 'WebSocket',
+                    matchScore: 100,
+                    validationDetails: {
+                        amountMatch: true,
+                        tokenMatch: true,
+                        addressMatch: true,
+                        timingValid: true
+                    }
+                },
+                
+                // 交易信息
+                txHash: '0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef',
+                blockNumber: 12345678,
+                
+                // 页面导航状态
+                currentPage: 'qr-code',
+                navigationHistory: ['product-selection', 'payment-selection', 'qr-code']
+            };
+            
+            // 显示支付信息
+            showPaymentInfo(paymentData);
+            
+            // 保存到 sessionStorage
+            sessionStorage.setItem('paymentData', JSON.stringify(paymentData));
+            
+            updateStatus('支付数据已创建，模拟 WebSocket 检测...', 'processing');
+            
+            // 模拟检测过程
+            setTimeout(() => {
+                updateStatus('检测到支付交易，验证中...', 'processing');
+                
+                setTimeout(() => {
+                    updateStatus('支付验证通过，准备跳转到成功页面!', 'success');
+                    
+                    // 开始倒计时跳转
+                    startCountdown(3, () => {
+                        console.log('跳转到成功页面: success-ws.html');
+                        window.location.href = '../success-ws.html';
+                    });
+                    
+                }, 1500);
+            }, 1000);
+        }
+
+        function testWithDebugInfo() {
+            updateStatus('启动详细调试模式...', 'processing');
+            
+            console.log('=== 支付成功跳转调试信息 ===');
+            
+            // 检查当前环境
+            console.log('1. 环境检查:');
+            console.log('   - sessionStorage 可用:', typeof sessionStorage !== 'undefined');
+            console.log('   - 当前页面:', window.location.href);
+            console.log('   - 用户代理:', navigator.userAgent);
+            
+            // 创建调试用的支付数据
+            const debugPaymentData = {
+                paymentId: 'debug_test_' + Date.now(),
+                product: 'rice',
+                price: 10.00,
+                selectedPayment: { symbol: 'USDT', name: 'Tether USD' },
+                selectedNetwork: { symbol: 'BSC', name: 'BNB Smart Chain' },
+                timestamp: Date.now(),
+                status: 'confirmed',
+                confirmedAt: Date.now(),
+                performanceMetrics: {
+                    detectionTime: 1800,
+                    detectionMethod: 'WebSocket',
+                    matchScore: 100
+                },
+                verificationResult: {
+                    verified: true,
+                    matchScore: 100
+                }
+            };
+            
+            console.log('2. 支付数据:');
+            console.log(debugPaymentData);
+            
+            // 保存数据
+            sessionStorage.setItem('paymentData', JSON.stringify(debugPaymentData));
+            console.log('3. 数据已保存到 sessionStorage');
+            
+            // 验证数据保存
+            const savedData = sessionStorage.getItem('paymentData');
+            console.log('4. 验证保存的数据:', savedData ? '成功' : '失败');
+            
+            if (savedData) {
+                try {
+                    const parsedData = JSON.parse(savedData);
+                    console.log('5. 数据解析:', parsedData.paymentId ? '成功' : '失败');
+                } catch (error) {
+                    console.error('5. 数据解析失败:', error);
+                }
+            }
+            
+            showPaymentInfo(debugPaymentData);
+            updateStatus('调试信息已输出到控制台，准备跳转...', 'success');
+            
+            // 延迟跳转以便查看调试信息
+            startCountdown(5, () => {
+                console.log('6. 执行跳转到 success-ws.html');
+                window.location.href = '../success-ws.html';
+            });
+        }
+
+        function goToQRPage() {
+            updateStatus('创建测试数据并跳转到二维码页面...', 'processing');
+            
+            // 创建基本的支付数据用于二维码页面
+            const qrPaymentData = {
+                paymentId: 'qr_test_' + Date.now(),
+                product: 'rice',
+                price: 10.00,
+                selectedPayment: { symbol: 'USDT', name: 'Tether USD' },
+                selectedNetwork: { symbol: 'BSC', name: 'BNB Smart Chain' },
+                timestamp: Date.now(),
+                expiresAt: Date.now() + 30 * 60 * 1000,
+                status: 'waiting'
+            };
+            
+            sessionStorage.setItem('paymentData', JSON.stringify(qrPaymentData));
+            
+            setTimeout(() => {
+                window.location.href = '../qrcode-ws.html';
+            }, 500);
+        }
+
+        // 页面加载时检查现有数据
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('支付成功跳转测试页面已加载');
+            
+            // 检查是否有现有的支付数据
+            const existingData = sessionStorage.getItem('paymentData');
+            if (existingData) {
+                try {
+                    const paymentData = JSON.parse(existingData);
+                    console.log('发现现有支付数据:', paymentData.paymentId);
+                    updateStatus(`发现现有支付数据: ${paymentData.paymentId}`, 'processing');
+                } catch (error) {
+                    console.error('现有支付数据解析失败:', error);
+                    sessionStorage.removeItem('paymentData');
+                    updateStatus('清理了无效的支付数据', 'waiting');
+                }
+            }
+        });
+    </script>
+</body>
+</html>

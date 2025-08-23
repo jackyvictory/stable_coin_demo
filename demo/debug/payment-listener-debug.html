@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Payment Listener Debug</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .debug-container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        .section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            background-color: #f9f9f9;
+        }
+        .log-area {
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 5px;
+            padding: 15px;
+            height: 400px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 12px;
+            margin-top: 10px;
+        }
+        button {
+            padding: 10px 15px;
+            margin: 5px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            color: white;
+        }
+        .btn-primary { background-color: #007bff; }
+        .btn-success { background-color: #28a745; }
+        .btn-warning { background-color: #ffc107; color: #212529; }
+        .btn-danger { background-color: #dc3545; }
+        .status-box {
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+            font-family: monospace;
+            font-size: 12px;
+        }
+        .status-success { background-color: #d4edda; color: #155724; }
+        .status-error { background-color: #f8d7da; color: #721c24; }
+        .status-warning { background-color: #fff3cd; color: #856404; }
+        .status-info { background-color: #d1ecf1; color: #0c5460; }
+    </style>
+</head>
+<body>
+    <div class="debug-container">
+        <h1>Payment Listener Debug</h1>
+        <p>调试支付监听器状态，检查为什么收到0.01 USDT后没有跳转</p>
+        
+        <div class="section">
+            <h3>🔍 检查支付监听器状态</h3>
+            <button class="btn-primary" onclick="checkPaymentListenerStatus()">
+                检查支付监听器
+            </button>
+            <button class="btn-success" onclick="checkActiveMonitors()">
+                检查活跃监听器
+            </button>
+            <button class="btn-warning" onclick="checkPaymentData()">
+                检查支付数据
+            </button>
+            <button class="btn-danger" onclick="simulateWebSocketMessage()">
+                模拟WebSocket消息
+            </button>
+        </div>
+        
+        <div class="section">
+            <h3>📊 当前状态</h3>
+            <div id="status-display">
+                <div class="status-box status-info">
+                    点击上面的按钮开始检查...
+                </div>
+            </div>
+        </div>
+        
+        <div class="log-area" id="debug-log">
+            调试日志将显示在这里...
+        </div>
+    </div>
+
+    <!-- 引入必要的脚本 -->
+    <script src="../config.js"></script>
+    <script src="../lib/web3.min.js"></script>
+    <script src="../js/blockchain-ws.js"></script>
+    <script src="../js/payment-handler-ws.js"></script>
+
+    <script>
+        function log(message, type = 'info') {
+            const logArea = document.getElementById('debug-log');
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = document.createElement('div');
+            logEntry.style.marginBottom = '4px';
+            logEntry.style.padding = '2px 4px';
+            logEntry.style.borderRadius = '2px';
+            
+            switch (type) {
+                case 'success':
+                    logEntry.style.backgroundColor = '#d4edda';
+                    logEntry.style.color = '#155724';
+                    break;
+                case 'error':
+                    logEntry.style.backgroundColor = '#f8d7da';
+                    logEntry.style.color = '#721c24';
+                    break;
+                case 'warning':
+                    logEntry.style.backgroundColor = '#fff3cd';
+                    logEntry.style.color = '#856404';
+                    break;
+                default:
+                    logEntry.style.backgroundColor = '#f8f9fa';
+                    logEntry.style.color = '#495057';
+            }
+            
+            logEntry.textContent = `[${timestamp}] ${message}`;
+            logArea.appendChild(logEntry);
+            logArea.scrollTop = logArea.scrollHeight;
+        }
+
+        function updateStatus(message, type = 'info') {
+            const statusDisplay = document.getElementById('status-display');
+            const statusClass = `status-${type}`;
+            statusDisplay.innerHTML = `<div class="status-box ${statusClass}">${message}</div>`;
+        }
+
+        function checkPaymentListenerStatus() {
+            log('=== 检查支付监听器状态 ===', 'info');
+            
+            // 检查全局变量
+            if (typeof window.paymentListenerWS !== 'undefined') {
+                log('✅ 找到全局 paymentListenerWS', 'success');
+                log(`监听器状态: ${window.paymentListenerWS.isActive ? '活跃' : '非活跃'}`, 'info');
+                
+                if (window.paymentListenerWS.paymentData) {
+                    log('支付数据:', 'info');
+                    log(`  支付ID: ${window.paymentListenerWS.paymentData.paymentId}`, 'info');
+                    log(`  商品: ${window.paymentListenerWS.paymentData.product}`, 'info');
+                    log(`  价格: ${window.paymentListenerWS.paymentData.price}`, 'info');
+                    
+                    if (window.paymentListenerWS.paymentData.selectedPayment) {
+                        log(`  代币: ${window.paymentListenerWS.paymentData.selectedPayment.symbol}`, 'info');
+                        log(`  合约: ${window.paymentListenerWS.paymentData.selectedPayment.contract}`, 'info');
+                    }
+                    
+                    updateStatus(`监听器状态: ${window.paymentListenerWS.isActive ? '✅ 活跃' : '❌ 非活跃'}<br>期望金额: ${window.paymentListenerWS.paymentData.price} ${window.paymentListenerWS.paymentData.selectedPayment?.symbol || 'N/A'}`, 'info');
+                } else {
+                    log('❌ 支付监听器没有支付数据', 'error');
+                    updateStatus('❌ 支付监听器没有支付数据', 'error');
+                }
+            } else {
+                log('❌ 未找到全局 paymentListenerWS', 'error');
+                updateStatus('❌ 未找到支付监听器', 'error');
+            }
+            
+            // 检查区块链管理器
+            if (typeof window.blockchainManager !== 'undefined') {
+                log('✅ 找到区块链管理器', 'success');
+                
+                if (window.blockchainManager.wsMonitor) {
+                    log('✅ 找到WebSocket监控器', 'success');
+                    log(`WebSocket连接状态: ${window.blockchainManager.wsMonitor.isConnected ? '已连接' : '未连接'}`, 'info');
+                } else {
+                    log('❌ 未找到WebSocket监控器', 'error');
+                }
+            } else {
+                log('❌ 未找到区块链管理器', 'error');
+            }
+        }
+
+        function checkActiveMonitors() {
+            log('=== 检查活跃监听器 ===', 'info');
+            
+            if (typeof window.blockchainManager !== 'undefined' && window.blockchainManager.activePaymentMonitors) {
+                const monitors = window.blockchainManager.activePaymentMonitors;
+                log(`活跃监听器数量: ${monitors.size}`, 'info');
+                
+                if (monitors.size > 0) {
+                    for (const [paymentId, monitor] of monitors) {
+                        log(`监听器 ${paymentId}:`, 'info');
+                        log(`  代币: ${monitor.tokenSymbol}`, 'info');
+                        log(`  期望金额: ${monitor.expectedAmount}`, 'info');
+                        log(`  接收地址: ${monitor.receiverAddress}`, 'info');
+                        log(`  开始时间: ${new Date(monitor.startTime).toLocaleString()}`, 'info');
+                    }
+                    
+                    updateStatus(`✅ 找到 ${monitors.size} 个活跃监听器`, 'success');
+                } else {
+                    log('❌ 没有活跃的支付监听器', 'error');
+                    updateStatus('❌ 没有活跃的支付监听器', 'error');
+                }
+            } else {
+                log('❌ 无法访问活跃监听器列表', 'error');
+                updateStatus('❌ 无法访问活跃监听器列表', 'error');
+            }
+        }
+
+        function checkPaymentData() {
+            log('=== 检查支付数据 ===', 'info');
+            
+            // 检查sessionStorage
+            const paymentDataStr = sessionStorage.getItem('paymentData');
+            if (paymentDataStr) {
+                try {
+                    const paymentData = JSON.parse(paymentDataStr);
+                    log('✅ 找到sessionStorage中的支付数据', 'success');
+                    log(`支付ID: ${paymentData.paymentId}`, 'info');
+                    log(`商品: ${paymentData.product}`, 'info');
+                    log(`价格: ${paymentData.price}`, 'info');
+                    
+                    if (paymentData.selectedPayment) {
+                        log(`选择的代币: ${paymentData.selectedPayment.symbol}`, 'info');
+                        log(`代币合约: ${paymentData.selectedPayment.contract}`, 'info');
+                    }
+                    
+                    updateStatus(`✅ 期望支付: ${paymentData.price} ${paymentData.selectedPayment?.symbol || 'N/A'}<br>实际收到: 0.01 USDT<br>❌ 金额不匹配`, 'warning');
+                } catch (error) {
+                    log(`❌ 解析支付数据失败: ${error.message}`, 'error');
+                }
+            } else {
+                log('❌ 未找到sessionStorage中的支付数据', 'error');
+            }
+            
+            // 检查全局变量
+            if (typeof window.paymentData !== 'undefined') {
+                log('✅ 找到全局paymentData变量', 'success');
+                log(`类型: ${typeof window.paymentData}`, 'info');
+                log(`内容: ${JSON.stringify(window.paymentData, null, 2)}`, 'info');
+            } else {
+                log('❌ 未找到全局paymentData变量', 'error');
+            }
+        }
+
+        function simulateWebSocketMessage() {
+            log('=== 模拟WebSocket消息处理 ===', 'info');
+            
+            // 模拟接收到的WebSocket消息
+            const wsMessage = {
+                "jsonrpc": "2.0",
+                "method": "eth_subscription",
+                "params": {
+                    "result": {
+                        "address": "0x55d398326f99059ff775485246999027b3197955",
+                        "blockHash": "0x6bf785654a9fc265a26e433da0038b204b5612ee096811f9bb98fde8a8cae95f",
+                        "blockNumber": "0x37e1baf",
+                        "data": "0x000000000000000000000000000000000000000000000000002386f26fc10000",
+                        "logIndex": "0x28",
+                        "removed": false,
+                        "topics": [
+                            "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
+                            "0x000000000000000000000000d87caca31c0c10110b6132bddf88221f60ff6341",
+                            "0x000000000000000000000000e27577b0e3920ce35f100f66430de0108cb78a04"
+                        ],
+                        "transactionHash": "0x0403401f96587b71033189fcafaee475ff1e581c30b1b0d784cb76bd4e7cf8d5",
+                        "transactionIndex": "0x12"
+                    }
+                }
+            };
+
+            const result = wsMessage.params.result;
+            
+            // 解析消息
+            log('解析WebSocket消息:', 'info');
+            log(`合约地址: ${result.address}`, 'info');
+            log(`区块号: ${parseInt(result.blockNumber, 16)}`, 'info');
+            log(`交易哈希: ${result.transactionHash}`, 'info');
+            
+            // 解析地址
+            const fromAddress = '0x' + result.topics[1].slice(26);
+            const toAddress = '0x' + result.topics[2].slice(26);
+            log(`发送地址: ${fromAddress}`, 'info');
+            log(`接收地址: ${toAddress}`, 'info');
+            
+            // 解析金额 - 使用正确的计算方法
+            const rawAmount = result.data;
+            const amountWei = BigInt(rawAmount);
+            const decimals = 18; // USDT在BSC上是18位小数
+            const amount = Number(amountWei) / Math.pow(10, decimals);
+            
+            log(`原始金额数据: ${rawAmount}`, 'info');
+            log(`Wei金额: ${amountWei.toString()}`, 'info');
+            log(`格式化金额: ${amount} USDT`, 'success');
+            
+            // 检查匹配条件
+            const expectedReceiver = '0xe27577B0e3920cE35f100f66430de0108cb78a04';
+            const addressMatch = toAddress.toLowerCase() === expectedReceiver.toLowerCase();
+            
+            log('=== 匹配检查 ===', 'warning');
+            log(`接收地址匹配: ${addressMatch ? '✅' : '❌'}`, addressMatch ? 'success' : 'error');
+            log(`实际金额: ${amount} USDT`, 'info');
+            
+            // 检查期望金额
+            if (typeof window.blockchainManager !== 'undefined' && window.blockchainManager.activePaymentMonitors) {
+                const monitors = window.blockchainManager.activePaymentMonitors;
+                if (monitors.size > 0) {
+                    for (const [paymentId, monitor] of monitors) {
+                        const expectedAmount = monitor.expectedAmount;
+                        const amountDiff = Math.abs(amount - expectedAmount);
+                        const tolerance = Math.max(0.001, expectedAmount * 0.001);
+                        const amountMatch = amountDiff <= tolerance;
+                        
+                        log(`监听器 ${paymentId}:`, 'info');
+                        log(`  期望金额: ${expectedAmount} ${monitor.tokenSymbol}`, 'info');
+                        log(`  实际金额: ${amount} USDT`, 'info');
+                        log(`  金额差异: ${amountDiff}`, 'info');
+                        log(`  容差范围: ${tolerance}`, 'info');
+                        log(`  金额匹配: ${amountMatch ? '✅' : '❌'}`, amountMatch ? 'success' : 'error');
+                        
+                        if (!amountMatch) {
+                            log(`❌ 金额不匹配！期望 ${expectedAmount}，实际收到 ${amount}`, 'error');
+                            updateStatus(`❌ 金额不匹配<br>期望: ${expectedAmount} ${monitor.tokenSymbol}<br>实际: ${amount} USDT<br>差异: ${amountDiff} > 容差: ${tolerance}`, 'error');
+                        } else {
+                            log(`✅ 金额匹配！`, 'success');
+                            updateStatus(`✅ 支付匹配成功<br>金额: ${amount} USDT<br>应该会跳转到成功页面`, 'success');
+                        }
+                    }
+                } else {
+                    log('❌ 没有活跃的监听器来匹配这个支付', 'error');
+                    updateStatus('❌ 没有活跃的监听器', 'error');
+                }
+            }
+        }
+
+        // 页面加载时的初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            log('Payment Listener Debug 页面已加载', 'success');
+            log('点击按钮开始调试...', 'info');
+            
+            // 等待一下让其他脚本加载完成
+            setTimeout(() => {
+                checkPaymentListenerStatus();
+            }, 1000);
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QR Code WebSocket Debug</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+
+        .debug-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 2px solid #007bff;
+            border-radius: 8px;
+            background-color: #f8f9fa;
+        }
+
+        .test-button {
+            padding: 10px 15px;
+            margin: 5px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            color: white;
+        }
+
+        .btn-primary {
+            background-color: #007bff;
+        }
+
+        .btn-success {
+            background-color: #28a745;
+        }
+
+        .btn-danger {
+            background-color: #dc3545;
+        }
+
+        .btn-warning {
+            background-color: #ffc107;
+            color: #212529;
+        }
+
+        .status-display {
+            margin: 10px 0;
+            padding: 10px;
+            background-color: #ffffff;
+            border-radius: 6px;
+            border: 1px solid #dee2e6;
+            font-family: monospace;
+            font-size: 12px;
+        }
+
+        .log-area {
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 5px;
+            padding: 15px;
+            height: 200px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 12px;
+            margin-top: 10px;
+        }
+
+        iframe {
+            width: 100%;
+            height: 600px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="debug-container">
+        <h1>QR Code WebSocket Debug</h1>
+        <p>这个页面用于测试二维码页面中的 WebSocket 监控功能。</p>
+
+        <!-- 测试控制区域 -->
+        <div class="test-section">
+            <h3>🧪 Test Controls</h3>
+            <button class="test-button btn-primary" onclick="openQRCodePage()">
+                Open QR Code Page
+            </button>
+            <button class="test-button btn-success" onclick="testWebSocketFunctions()">
+                Test WebSocket Functions
+            </button>
+            <button class="test-button btn-warning" onclick="simulatePaymentData()">
+                Create Test Payment Data
+            </button>
+            <button class="test-button btn-danger" onclick="clearTestData()">
+                Clear Test Data
+            </button>
+            
+            <div class="log-area" id="test-log">
+                Test log will appear here...
+            </div>
+        </div>
+
+        <!-- 状态显示区域 -->
+        <div class="test-section">
+            <h3>📊 Current Status</h3>
+            <div class="status-display">
+                <div><strong>Payment Data:</strong> <span id="payment-status">Not set</span></div>
+                <div><strong>Blockchain Manager:</strong> <span id="blockchain-status">Not loaded</span></div>
+                <div><strong>WebSocket Monitor:</strong> <span id="websocket-status">Not available</span></div>
+            </div>
+        </div>
+
+        <!-- 嵌入的二维码页面 -->
+        <div class="test-section">
+            <h3>🔗 QR Code Page (Embedded)</h3>
+            <iframe id="qrcode-iframe" src="../qrcode-ws.html" style="display: none;"></iframe>
+            <button class="test-button btn-primary" onclick="toggleIframe()">
+                Show/Hide QR Code Page
+            </button>
+        </div>
+    </div>
+
+    <!-- Include required scripts -->
+    <script src="../config.js"></script>
+    <script src="../lib/web3.min.js"></script>
+    <script src="../js/blockchain-ws.js"></script>
+    <script src="../js/payment-handler-ws.js"></script>
+
+    <script>
+        let testLog;
+
+        function log(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = `[${timestamp}] ${message}\n`;
+
+            if (testLog) {
+                testLog.textContent += logEntry;
+                testLog.scrollTop = testLog.scrollHeight;
+            }
+
+            console.log(message);
+        }
+
+        function openQRCodePage() {
+            log('Opening QR Code page in new window...');
+            window.open('../qrcode-ws.html', '_blank');
+        }
+
+        function testWebSocketFunctions() {
+            log('Testing WebSocket functions...');
+            
+            // 检查全局函数是否可用
+            const functions = [
+                'handleWebSocketControl',
+                'toggleWebSocketDebugInfo', 
+                'clearWebSocketDebugMessages',
+                'toggleDebugPanel'
+            ];
+            
+            functions.forEach(funcName => {
+                if (typeof window[funcName] === 'function') {
+                    log(`✅ ${funcName} is available`);
+                } else {
+                    log(`❌ ${funcName} is NOT available`);
+                }
+            });
+            
+            updateStatus();
+        }
+
+        function simulatePaymentData() {
+            log('Creating test payment data...');
+            
+            const testPaymentData = {
+                paymentId: 'debug-test-' + Date.now(),
+                product: 'rice',
+                price: 10.00,
+                selectedPayment: {
+                    symbol: 'USDT',
+                    name: 'Tether USD',
+                    contract: '0x55d398326f99059fF775485246999027B3197955'
+                },
+                selectedNetwork: {
+                    symbol: 'BSC',
+                    name: 'BNB Smart Chain'
+                },
+                timestamp: Date.now(),
+                expiresAt: Date.now() + 30 * 60 * 1000
+            };
+            
+            sessionStorage.setItem('paymentData', JSON.stringify(testPaymentData));
+            log(`✅ Test payment data created: ${testPaymentData.paymentId}`);
+            updateStatus();
+        }
+
+        function clearTestData() {
+            log('Clearing test data...');
+            sessionStorage.removeItem('paymentData');
+            log('✅ Test data cleared');
+            updateStatus();
+        }
+
+        function toggleIframe() {
+            const iframe = document.getElementById('qrcode-iframe');
+            if (iframe.style.display === 'none') {
+                iframe.style.display = 'block';
+                log('QR Code page iframe shown');
+            } else {
+                iframe.style.display = 'none';
+                log('QR Code page iframe hidden');
+            }
+        }
+
+        function updateStatus() {
+            // 更新支付数据状态
+            const paymentData = sessionStorage.getItem('paymentData');
+            const paymentStatusElement = document.getElementById('payment-status');
+            if (paymentData) {
+                const data = JSON.parse(paymentData);
+                paymentStatusElement.textContent = `Set (ID: ${data.paymentId})`;
+                paymentStatusElement.style.color = '#28a745';
+            } else {
+                paymentStatusElement.textContent = 'Not set';
+                paymentStatusElement.style.color = '#dc3545';
+            }
+            
+            // 更新区块链管理器状态
+            const blockchainStatusElement = document.getElementById('blockchain-status');
+            if (typeof window.blockchainManager !== 'undefined') {
+                blockchainStatusElement.textContent = 'Loaded';
+                blockchainStatusElement.style.color = '#28a745';
+            } else {
+                blockchainStatusElement.textContent = 'Not loaded';
+                blockchainStatusElement.style.color = '#dc3545';
+            }
+            
+            // 更新 WebSocket 监控状态
+            const websocketStatusElement = document.getElementById('websocket-status');
+            if (window.blockchainManager && window.blockchainManager.wsMonitor) {
+                const wsMonitor = window.blockchainManager.wsMonitor;
+                if (wsMonitor.isConnected) {
+                    websocketStatusElement.textContent = 'Connected';
+                    websocketStatusElement.style.color = '#28a745';
+                } else {
+                    websocketStatusElement.textContent = 'Available but not connected';
+                    websocketStatusElement.style.color = '#ffc107';
+                }
+            } else {
+                websocketStatusElement.textContent = 'Not available';
+                websocketStatusElement.style.color = '#dc3545';
+            }
+        }
+
+        // 初始化
+        document.addEventListener('DOMContentLoaded', function () {
+            testLog = document.getElementById('test-log');
+            log('🚀 QR Code WebSocket Debug initialized');
+            
+            // 定期更新状态
+            setInterval(updateStatus, 2000);
+            updateStatus();
+            
+            // 等待区块链管理器
+            const checkBlockchain = () => {
+                if (typeof window.blockchainManager !== 'undefined') {
+                    log('✅ Blockchain Manager detected');
+                    updateStatus();
+                } else {
+                    setTimeout(checkBlockchain, 1000);
+                }
+            };
+            
+            checkBlockchain();
+        });
+
+        // 监听区块链就绪事件
+        window.addEventListener('blockchainReady', (event) => {
+            log('🎉 Received blockchainReady event');
+            updateStatus();
+        });
+
+        // 监听来自 iframe 的消息
+        window.addEventListener('message', (event) => {
+            if (event.data && event.data.type === 'websocket-debug') {
+                log(`📨 From QR Page: ${event.data.message}`);
+            }
+        });
+    </script>
+</body>
+
+</html>

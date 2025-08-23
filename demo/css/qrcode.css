@@ -57,6 +57,16 @@
   animation: pulse 2s infinite;
 }
 
+.status-dot.connecting {
+  background-color: #fbbf24;
+  animation: pulse 2s infinite;
+}
+
+.status-dot.waiting {
+  background-color: #10b981;
+  animation: none;
+}
+
 .status-dot.confirmed {
   background-color: #10b981;
   animation: none;

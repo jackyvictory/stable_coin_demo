@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebSocket Connection Debug</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+
+        .debug-container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .status-box {
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 5px;
+            font-family: monospace;
+            font-size: 12px;
+        }
+
+        .status-success {
+            background-color: #d4edda;
+            border: 1px solid #c3e6cb;
+        }
+
+        .status-error {
+            background-color: #f8d7da;
+            border: 1px solid #f5c6cb;
+        }
+
+        .status-warning {
+            background-color: #fff3cd;
+            border: 1px solid #ffeaa7;
+        }
+
+        .status-info {
+            background-color: #d1ecf1;
+            border: 1px solid #bee5eb;
+        }
+
+        .test-button {
+            padding: 10px 15px;
+            margin: 5px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            color: white;
+        }
+
+        .btn-primary {
+            background-color: #007bff;
+        }
+
+        .btn-success {
+            background-color: #28a745;
+        }
+
+        .btn-danger {
+            background-color: #dc3545;
+        }
+
+        .btn-warning {
+            background-color: #ffc107;
+            color: #212529;
+        }
+
+        .log-area {
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 5px;
+            padding: 15px;
+            height: 300px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 12px;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="debug-container">
+        <h1>WebSocket Connection Debug</h1>
+
+        <div id="status-display">
+            <div class="status-box status-info">
+                <strong>Status:</strong> <span id="connection-status">Initializing...</span>
+            </div>
+        </div>
+
+        <div class="test-controls">
+            <button class="test-button btn-primary" onclick="testBlockchainManager()">
+                Test Blockchain Manager
+            </button>
+            <button class="test-button btn-success" onclick="testWebSocketConnection()">
+                Test WebSocket Connection
+            </button>
+            <button class="test-button btn-warning" onclick="testPaymentData()">
+                Test Payment Data
+            </button>
+            <button class="test-button btn-danger" onclick="clearLog()">
+                Clear Log
+            </button>
+        </div>
+
+        <div class="log-area" id="log-area">
+            Debug log will appear here...
+        </div>
+    </div>
+
+    <!-- Include required scripts -->
+    <script src="../config.js"></script>
+    <script src="../lib/web3.min.js"></script>
+    <script src="../js/blockchain-ws.js"></script>
+    <script src="../js/payment-handler-ws.js"></script>
+
+    <script>
+        let logArea;
+        let statusElement;
+
+        function log(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = `[${timestamp}] ${message}\n`;
+
+            if (logArea) {
+                logArea.textContent += logEntry;
+                logArea.scrollTop = logArea.scrollHeight;
+            }
+
+            console.log(message);
+
+            // Update status
+            if (statusElement) {
+                statusElement.textContent = message;
+                const statusBox = statusElement.parentElement;
+                statusBox.className = `status-box status-${type}`;
+            }
+        }
+
+        function testBlockchainManager() {
+            log('Testing Blockchain Manager...', 'info');
+
+            if (typeof window.blockchainManager === 'undefined') {
+                log('❌ window.blockchainManager is undefined', 'error');
+                return;
+            }
+
+            log('✅ window.blockchainManager exists', 'success');
+            log(`   isConnected: ${window.blockchainManager.isConnected}`, 'info');
+            log(`   wsMonitor: ${window.blockchainManager.wsMonitor ? 'exists' : 'null'}`, 'info');
+
+            if (window.blockchainManager.wsMonitor) {
+                const wsMonitor = window.blockchainManager.wsMonitor;
+                log(`   WebSocket isConnected: ${wsMonitor.isConnected}`, 'info');
+                log(`   WebSocket connectionState: ${wsMonitor.connectionState}`, 'info');
+                log(`   Current endpoint: ${wsMonitor.currentEndpointIndex}`, 'info');
+            }
+        }
+
+        async function testWebSocketConnection() {
+            log('Testing WebSocket Connection...', 'info');
+
+            if (!window.blockchainManager || !window.blockchainManager.wsMonitor) {
+                log('❌ WebSocket Monitor not available', 'error');
+                return;
+            }
+
+            const wsMonitor = window.blockchainManager.wsMonitor;
+
+            try {
+                log('🔌 Attempting WebSocket connection...', 'warning');
+                const success = await wsMonitor.connect();
+
+                if (success) {
+                    log('✅ WebSocket connection successful!', 'success');
+                    log(`   Connected to: ${wsMonitor.wsEndpoints[wsMonitor.currentEndpointIndex].name}`, 'info');
+                } else {
+                    log('❌ WebSocket connection failed', 'error');
+                }
+            } catch (error) {
+                log(`❌ WebSocket connection error: ${error.message}`, 'error');
+            }
+        }
+
+        function testPaymentData() {
+            log('Testing Payment Data...', 'info');
+
+            // Create mock payment data
+            const mockPaymentData = {
+                paymentId: 'test-' + Date.now(),
+                product: 'rice',
+                price: 10.00,
+                selectedPayment: {
+                    symbol: 'USDT',
+                    name: 'Tether USD',
+                    contract: '0x55d398326f99059fF775485246999027B3197955'
+                },
+                selectedNetwork: {
+                    symbol: 'BSC',
+                    name: 'BNB Smart Chain'
+                },
+                timestamp: Date.now(),
+                expiresAt: Date.now() + 30 * 60 * 1000
+            };
+
+            // Store in sessionStorage
+            sessionStorage.setItem('paymentData', JSON.stringify(mockPaymentData));
+            log('✅ Mock payment data created and stored', 'success');
+            log(`   PaymentId: ${mockPaymentData.paymentId}`, 'info');
+            log(`   Amount: ${mockPaymentData.price} ${mockPaymentData.selectedPayment.symbol}`, 'info');
+
+            // Test if qrcode-ws.js can load it
+            const storedData = sessionStorage.getItem('paymentData');
+            if (storedData) {
+                const parsed = JSON.parse(storedData);
+                log('✅ Payment data can be retrieved from sessionStorage', 'success');
+                log(`   Retrieved PaymentId: ${parsed.paymentId}`, 'info');
+            } else {
+                log('❌ Failed to retrieve payment data from sessionStorage', 'error');
+            }
+        }
+
+        function clearLog() {
+            if (logArea) {
+                logArea.textContent = 'Debug log cleared...\n';
+            }
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function () {
+            logArea = document.getElementById('log-area');
+            statusElement = document.getElementById('connection-status');
+
+            log('🚀 WebSocket Connection Debug initialized', 'info');
+
+            // Wait for blockchain manager
+            const checkBlockchain = () => {
+                if (typeof window.blockchainManager !== 'undefined') {
+                    log('✅ Blockchain Manager detected', 'success');
+                    testBlockchainManager();
+                } else {
+                    log('⏳ Waiting for Blockchain Manager...', 'warning');
+                    setTimeout(checkBlockchain, 1000);
+                }
+            };
+
+            checkBlockchain();
+        });
+
+        // Listen for blockchain ready event
+        window.addEventListener('blockchainReady', (event) => {
+            log('🎉 Received blockchainReady event', 'success');
+            log(`   WebSocket optimized: ${event.detail.optimized}`, 'info');
+            testBlockchainManager();
+        });
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stable Coin - Payment Successful</title>
+    <meta name="description" content="Stable Coin - Payment completed successfully">
+    <link rel="stylesheet" href="css/main.css">
+    <link rel="stylesheet" href="css/success.css">
+    <style>
+        /* Blockchain Info Section Styles - 与 Payment Details 保持一致但底色稍有区别 */
+        .blockchain-info {
+            width: 100%;
+            margin-top: 20px;
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: var(--chakra-radii-xl);
+            overflow: hidden;
+        }
+        
+        .blockchain-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 20px;
+            background-color: #e9ecef;
+            border-bottom: 1px solid #dee2e6;
+            cursor: pointer;
+            transition: background-color 0.2s ease;
+        }
+        
+        .blockchain-header:hover {
+            background-color: #e2e6ea;
+        }
+        
+        .blockchain-title {
+            margin: 0;
+            color: #495057;
+            font-size: 16px;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .blockchain-title::before {
+            content: '🔗';
+            font-size: 18px;
+        }
+        
+        .blockchain-toggle-btn {
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 5px;
+            border-radius: 4px;
+            transition: all 0.2s ease;
+        }
+        
+        .blockchain-toggle-btn:hover {
+            background-color: rgba(0, 0, 0, 0.1);
+        }
+        
+        .toggle-icon {
+            font-size: 14px;
+            color: #6c757d;
+            transition: transform 0.3s ease;
+        }
+        
+        .blockchain-toggle-btn.expanded .toggle-icon {
+            transform: rotate(180deg);
+        }
+        
+        .blockchain-details {
+            padding: 0;
+            transition: all 0.3s ease;
+        }
+        
+        .blockchain-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 20px;
+            border-bottom: 1px solid #e9ecef;
+            transition: background-color 0.2s ease;
+        }
+        
+        .blockchain-item:last-child {
+            border-bottom: none;
+        }
+        
+        .blockchain-item:hover {
+            background-color: #f1f3f4;
+        }
+        
+        .blockchain-label {
+            font-size: 14px;
+            color: #6c757d;
+            font-weight: 500;
+            min-width: 140px;
+            flex-shrink: 0;
+        }
+        
+        .blockchain-value {
+            font-size: 14px;
+            color: #495057;
+            font-family: 'Courier New', monospace;
+            text-align: right;
+            word-break: break-all;
+            max-width: 250px;
+            line-height: 1.4;
+        }
+        
+        /* Special styling for hash values */
+        .blockchain-value.hash {
+            color: #007bff;
+            font-weight: 500;
+        }
+        
+        /* Special styling for addresses */
+        .blockchain-value.address {
+            color: #28a745;
+            font-weight: 500;
+        }
+        
+        /* Special styling for amounts */
+        .blockchain-value.amount {
+            color: #dc3545;
+            font-weight: bold;
+        }
+        
+        /* Special styling for blockchain name */
+        .blockchain-value.network {
+            color: #6f42c1;
+            font-weight: bold;
+            font-family: inherit;
+        }
+        
+        /* Responsive design */
+        @media (max-width: 600px) {
+            .blockchain-header {
+                padding: 12px 15px;
+            }
+            
+            .blockchain-item {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 5px;
+                padding: 12px 15px;
+            }
+            
+            .blockchain-label {
+                min-width: auto;
+            }
+            
+            .blockchain-value {
+                text-align: left;
+                max-width: 100%;
+            }
+        }
+    </style>
+    <script src="config.js"></script>
+    <script src="lib/web3.min.js"></script>
+    <script src="js/blockchain-ws.js"></script>
+    <script src="js/payment-handler-ws.js"></script>
+</head>
+<body>
+    <!-- Main Container -->
+    <div class="success-main-container">
+        <!-- Success Container -->
+        <div class="success-container">
+            <div class="success-card">
+                <!-- Success Icon -->
+                <div class="success-icon">
+                    <div class="checkmark-circle">
+                        <div class="checkmark">✓</div>
+                    </div>
+                </div>
+
+                <!-- Success Message -->
+                <div class="success-message">
+                    <h1 class="success-title">Payment Successful!</h1>
+                    <p class="success-subtitle">Thank you for your donation. Your payment has been confirmed.</p>
+                </div>
+
+
+
+                <!-- Payment Summary -->
+                <div class="payment-summary">
+                    <h3 class="summary-title">Payment Details</h3>
+                    <div class="summary-details">
+                        <div class="summary-item">
+                            <span class="summary-label">Item:</span>
+                            <span class="summary-value" id="success-item">Loading...</span>
+                        </div>
+                        <div class="summary-item">
+                            <span class="summary-label">Amount:</span>
+                            <span class="summary-value" id="success-amount">Loading...</span>
+                        </div>
+                        <div class="summary-item">
+                            <span class="summary-label">Payment Method:</span>
+                            <span class="summary-value" id="success-payment-method">Loading...</span>
+                        </div>
+                        <div class="summary-item">
+                            <span class="summary-label">Network:</span>
+                            <span class="summary-value" id="success-network">Loading...</span>
+                        </div>
+                        <div class="summary-item">
+                            <span class="summary-label">PayID:</span>
+                            <span class="summary-value" id="success-payment-id">Loading...</span>
+                        </div>
+                        <div class="summary-item">
+                            <span class="summary-label">Transaction Time:</span>
+                            <span class="summary-value" id="success-timestamp">Loading...</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Blockchain Info Section -->
+                <div class="blockchain-info">
+                    <div class="blockchain-header" onclick="toggleBlockchainInfo()">
+                        <h3 class="blockchain-title">Blockchain Info</h3>
+                        <button class="blockchain-toggle-btn" id="blockchain-toggle-btn">
+                            <span class="toggle-icon">▼</span>
+                        </button>
+                    </div>
+                    <div class="blockchain-details" id="blockchain-details" style="display: none;">
+                        <div class="blockchain-item">
+                            <span class="blockchain-label">Blockchain Name:</span>
+                            <span class="blockchain-value" id="blockchain-name">Loading...</span>
+                        </div>
+                        <div class="blockchain-item">
+                            <span class="blockchain-label">Transaction Hash:</span>
+                            <span class="blockchain-value" id="blockchain-tx-hash">Loading...</span>
+                        </div>
+                        <div class="blockchain-item">
+                            <span class="blockchain-label">Block Number:</span>
+                            <span class="blockchain-value" id="blockchain-block-number">Loading...</span>
+                        </div>
+                        <div class="blockchain-item">
+                            <span class="blockchain-label">From Address:</span>
+                            <span class="blockchain-value" id="blockchain-from-addr">Loading...</span>
+                        </div>
+                        <div class="blockchain-item">
+                            <span class="blockchain-label">To Address:</span>
+                            <span class="blockchain-value" id="blockchain-to-addr">Loading...</span>
+                        </div>
+                        <div class="blockchain-item">
+                            <span class="blockchain-label">Contract Address:</span>
+                            <span class="blockchain-value" id="blockchain-contract-addr">Loading...</span>
+                        </div>
+                        <div class="blockchain-item">
+                            <span class="blockchain-label">Amount & Currency:</span>
+                            <span class="blockchain-value" id="blockchain-amount">Loading...</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="success-actions">
+                    <button class="new-payment-button" onclick="startNewPayment()">
+                        Make Another Donation
+                    </button>
+                    <button class="home-button" onclick="goHome()">
+                        Return to Homepage
+                    </button>
+                </div>
+
+                <!-- Additional Info -->
+                <div class="additional-info">
+                    <p class="info-text">
+                        Your donation helps provide food to those in need. 
+                        You will receive a confirmation email shortly.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/success-ws.js"></script>
+</body>
+</html>

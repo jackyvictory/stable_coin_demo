@@ -1,0 +1,625 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Success Page Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        
+        .test-container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .test-button {
+            padding: 10px 15px;
+            margin: 5px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            color: white;
+            background-color: #007bff;
+        }
+        
+        .test-button:hover {
+            background-color: #0056b3;
+        }
+        
+        .test-button.success {
+            background-color: #28a745;
+        }
+        
+        .test-button.warning {
+            background-color: #ffc107;
+            color: #000;
+        }
+        
+        .test-button.danger {
+            background-color: #dc3545;
+        }
+        
+        .blockchain-info {
+            width: 100%;
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            overflow: hidden;
+            margin-top: 15px;
+        }
+        
+        .blockchain-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 20px;
+            background-color: #e9ecef;
+            border-bottom: 1px solid #dee2e6;
+            cursor: pointer;
+        }
+        
+        .blockchain-title {
+            margin: 0;
+            color: #495057;
+            font-size: 16px;
+            font-weight: bold;
+        }
+        
+        .blockchain-details {
+            padding: 0;
+        }
+        
+        .blockchain-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 20px;
+            border-bottom: 1px solid #e9ecef;
+        }
+        
+        .blockchain-item:last-child {
+            border-bottom: none;
+        }
+        
+        .blockchain-label {
+            font-size: 14px;
+            color: #6c757d;
+            font-weight: 500;
+            min-width: 140px;
+        }
+        
+        .blockchain-value {
+            font-size: 14px;
+            color: #495057;
+            font-family: 'Courier New', monospace;
+            text-align: right;
+        }
+        
+        .blockchain-value.address {
+            color: #28a745;
+            font-weight: 500;
+        }
+        
+        .blockchain-value.hash {
+            color: #007bff;
+            font-weight: 500;
+        }
+        
+        .blockchain-value.network {
+            color: #6f42c1;
+            font-weight: bold;
+            font-family: inherit;
+        }
+        
+        .blockchain-value.amount {
+            color: #dc3545;
+            font-weight: bold;
+        }
+        
+        .log-container {
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            padding: 10px;
+            max-height: 300px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 12px;
+            margin-top: 15px;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h2>🧪 支付成功页面测试</h2>
+        <p>模拟支付成功页面的数据加载和显示过程，诊断 Blockchain Info 显示 N/A 的问题</p>
+        
+        <!-- 测试按钮 -->
+        <div>
+            <button class="test-button success" onclick="simulateNormalPayment()">模拟正常支付</button>
+            <button class="test-button success" onclick="simulateWebSocketPayment()">模拟 WebSocket 支付</button>
+            <button class="test-button warning" onclick="simulatePartialData()">模拟部分数据</button>
+            <button class="test-button danger" onclick="simulateNoData()">模拟无数据</button>
+            <button class="test-button" onclick="clearSessionStorage()">清除 SessionStorage</button>
+            <button class="test-button" onclick="checkSessionStorage()">检查 SessionStorage</button>
+        </div>
+        
+        <!-- Blockchain Info 显示 -->
+        <div class="blockchain-info">
+            <div class="blockchain-header" onclick="toggleBlockchainInfo()">
+                <h3 class="blockchain-title">🔗 Blockchain Info</h3>
+                <button style="background: none; border: none; cursor: pointer;">
+                    <span id="toggle-icon">▼</span>
+                </button>
+            </div>
+            <div class="blockchain-details" id="blockchain-details" style="display: block;">
+                <div class="blockchain-item">
+                    <span class="blockchain-label">Blockchain Name:</span>
+                    <span class="blockchain-value network" id="blockchain-name">Loading...</span>
+                </div>
+                <div class="blockchain-item">
+                    <span class="blockchain-label">Transaction Hash:</span>
+                    <span class="blockchain-value hash" id="blockchain-tx-hash">Loading...</span>
+                </div>
+                <div class="blockchain-item">
+                    <span class="blockchain-label">Block Number:</span>
+                    <span class="blockchain-value" id="blockchain-block-number">Loading...</span>
+                </div>
+                <div class="blockchain-item">
+                    <span class="blockchain-label">From Address:</span>
+                    <span class="blockchain-value address" id="blockchain-from-addr">Loading...</span>
+                </div>
+                <div class="blockchain-item">
+                    <span class="blockchain-label">To Address:</span>
+                    <span class="blockchain-value address" id="blockchain-to-addr">Loading...</span>
+                </div>
+                <div class="blockchain-item">
+                    <span class="blockchain-label">Contract Address:</span>
+                    <span class="blockchain-value address" id="blockchain-contract-addr">Loading...</span>
+                </div>
+                <div class="blockchain-item">
+                    <span class="blockchain-label">Amount & Currency:</span>
+                    <span class="blockchain-value amount" id="blockchain-amount">Loading...</span>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 日志显示 -->
+        <div class="log-container" id="log-container">
+            页面加载完成，点击测试按钮开始...
+        </div>
+    </div>
+
+    <script>
+        // 全局变量
+        let paymentData = null;
+        
+        // 日志函数
+        function log(message) {
+            const timestamp = new Date().toLocaleTimeString();
+            const logContainer = document.getElementById('log-container');
+            const logEntry = `[${timestamp}] ${message}\n`;
+            logContainer.textContent += logEntry;
+            logContainer.scrollTop = logContainer.scrollHeight;
+            console.log(message);
+        }
+        
+        // 模拟正常支付数据
+        function simulateNormalPayment() {
+            log('🔄 模拟正常支付数据...');
+            
+            const testData = {
+                product: 'rice',
+                price: 10.00,
+                paymentId: 'PAY-TEST-001',
+                selectedPayment: {
+                    symbol: 'USDT',
+                    name: 'Tether USD',
+                    contractAddress: '0x55d398326f99059fF775485246999027B3197955'
+                },
+                selectedNetwork: {
+                    symbol: 'BSC',
+                    name: 'BNB Smart Chain',
+                    chainId: 56
+                },
+                walletAddress: '0xe27577B0e3920cE35f100f66430de0108cb78a04',
+                timestamp: Date.now(),
+                confirmedAt: Date.now()
+            };
+            
+            // 保存到 sessionStorage
+            sessionStorage.setItem('paymentData', JSON.stringify(testData));
+            log('✅ 正常支付数据已保存到 sessionStorage');
+            
+            // 重新加载数据并显示
+            loadAndDisplayData();
+        }
+        
+        // 模拟 WebSocket 支付数据
+        function simulateWebSocketPayment() {
+            log('🔄 模拟 WebSocket 支付数据...');
+            
+            const testData = {
+                product: 'rice',
+                price: 10.00,
+                paymentId: 'PAY-WS-001',
+                selectedPayment: {
+                    symbol: 'USDT',
+                    name: 'Tether USD',
+                    contractAddress: '0x55d398326f99059fF775485246999027B3197955'
+                },
+                selectedNetwork: {
+                    symbol: 'BSC',
+                    name: 'BNB Smart Chain',
+                    chainId: 56
+                },
+                walletAddress: '0xe27577B0e3920cE35f100f66430de0108cb78a04',
+                timestamp: Date.now(),
+                confirmedAt: Date.now(),
+                confirmationData: {
+                    transactionHash: '0x1a2b3c4d5e6f7890abcdef1234567890abcdef1234567890abcdef1234567890',
+                    blockNumber: 12345678,
+                    fromAddress: '0xabcdef1234567890abcdef1234567890abcdef12',
+                    toAddress: '0xe27577B0e3920cE35f100f66430de0108cb78a04',
+                    contractAddress: '0x55d398326f99059fF775485246999027B3197955',
+                    amount: 10.00,
+                    tokenSymbol: 'USDT',
+                    blockTimestamp: Date.now(),
+                    networkName: 'BNB Smart Chain (BSC)'
+                }
+            };
+            
+            // 保存到 sessionStorage
+            sessionStorage.setItem('paymentData', JSON.stringify(testData));
+            log('✅ WebSocket 支付数据已保存到 sessionStorage');
+            
+            // 重新加载数据并显示
+            loadAndDisplayData();
+        }
+        
+        // 模拟部分数据
+        function simulatePartialData() {
+            log('🔄 模拟部分数据...');
+            
+            const testData = {
+                product: 'rice',
+                price: 5.00,
+                paymentId: 'PAY-PARTIAL-001',
+                selectedPayment: { symbol: 'USDT' },
+                selectedNetwork: { name: 'BSC' },
+                timestamp: Date.now()
+            };
+            
+            // 保存到 sessionStorage
+            sessionStorage.setItem('paymentData', JSON.stringify(testData));
+            log('✅ 部分数据已保存到 sessionStorage');
+            
+            // 重新加载数据并显示
+            loadAndDisplayData();
+        }
+        
+        // 模拟无数据
+        function simulateNoData() {
+            log('🔄 模拟无数据情况...');
+            
+            // 清除 sessionStorage
+            sessionStorage.removeItem('paymentData');
+            log('❌ sessionStorage 已清除');
+            
+            // 重新加载数据并显示
+            loadAndDisplayData();
+        }
+        
+        // 清除 SessionStorage
+        function clearSessionStorage() {
+            sessionStorage.removeItem('paymentData');
+            log('🗑️ SessionStorage 已清除');
+            
+            // 重置显示
+            resetDisplay();
+        }
+        
+        // 检查 SessionStorage
+        function checkSessionStorage() {
+            const data = sessionStorage.getItem('paymentData');
+            if (data) {
+                log('📋 SessionStorage 中的数据:');
+                log(JSON.stringify(JSON.parse(data), null, 2));
+            } else {
+                log('❌ SessionStorage 中没有 paymentData');
+            }
+        }
+        
+        // 加载并显示数据
+        function loadAndDisplayData() {
+            log('🔄 开始加载和显示数据...');
+            
+            // 模拟 success-ws.js 中的 loadPaymentData 函数
+            const data = sessionStorage.getItem('paymentData');
+            if (data) {
+                paymentData = JSON.parse(data);
+                log('✅ 支付数据加载成功');
+                log(`📋 支付数据: ${JSON.stringify(paymentData, null, 2)}`);
+            } else {
+                log('❌ 没有找到支付数据，使用默认数据');
+                paymentData = {
+                    product: 'unknown',
+                    price: 0,
+                    paymentId: 'N/A',
+                    selectedPayment: { symbol: 'N/A', name: 'N/A' },
+                    selectedNetwork: { symbol: 'N/A', name: 'N/A' },
+                    timestamp: Date.now(),
+                    confirmedAt: Date.now(),
+                    monitoringMode: 'WebSocket'
+                };
+            }
+            
+            // 显示区块链信息
+            displayBlockchainInfo();
+        }
+        
+        // 重置显示
+        function resetDisplay() {
+            const elements = [
+                'blockchain-name', 'blockchain-tx-hash', 'blockchain-block-number',
+                'blockchain-from-addr', 'blockchain-to-addr', 'blockchain-contract-addr', 'blockchain-amount'
+            ];
+            
+            elements.forEach(id => {
+                const element = document.getElementById(id);
+                if (element) {
+                    element.textContent = 'Loading...';
+                    element.className = 'blockchain-value';
+                }
+            });
+        }
+        
+        // 显示区块链信息 (复制自 success-ws.js 并简化)
+        function displayBlockchainInfo() {
+            log('🔗 开始显示区块链信息...');
+            
+            if (!paymentData) {
+                log('❌ 没有支付数据可用');
+                return;
+            }
+            
+            // 获取所有区块链信息元素
+            const blockchainNameElement = document.getElementById('blockchain-name');
+            const txHashElement = document.getElementById('blockchain-tx-hash');
+            const blockNumberElement = document.getElementById('blockchain-block-number');
+            const fromAddrElement = document.getElementById('blockchain-from-addr');
+            const toAddrElement = document.getElementById('blockchain-to-addr');
+            const contractAddrElement = document.getElementById('blockchain-contract-addr');
+            const amountElement = document.getElementById('blockchain-amount');
+            
+            // 从支付数据中提取区块链信息
+            let blockchainData = extractBlockchainData(paymentData);
+            log('🔗 提取的区块链数据: ' + JSON.stringify(blockchainData, null, 2));
+            
+            // 更新区块链名称
+            if (blockchainNameElement) {
+                const networkName = getBlockchainName(paymentData);
+                blockchainNameElement.textContent = networkName;
+                blockchainNameElement.className = 'blockchain-value network';
+                log('🌐 网络名称: ' + networkName);
+            }
+            
+            // 更新各个字段
+            if (txHashElement) {
+                const displayHash = blockchainData.transactionHash || 'N/A';
+                txHashElement.textContent = displayHash;
+                txHashElement.className = 'blockchain-value hash';
+                log('🔗 交易哈希: ' + displayHash);
+            }
+            
+            if (blockNumberElement) {
+                const displayBlockNumber = blockchainData.blockNumber || 'N/A';
+                blockNumberElement.textContent = displayBlockNumber;
+                blockNumberElement.className = 'blockchain-value';
+                log('🧱 区块号: ' + displayBlockNumber);
+            }
+            
+            if (fromAddrElement) {
+                const displayFromAddr = blockchainData.fromAddress || 'N/A';
+                fromAddrElement.textContent = displayFromAddr;
+                fromAddrElement.className = 'blockchain-value address';
+                log('📤 发送地址: ' + displayFromAddr);
+            }
+            
+            if (toAddrElement) {
+                const displayToAddr = blockchainData.toAddress || 'N/A';
+                toAddrElement.textContent = displayToAddr;
+                toAddrElement.className = 'blockchain-value address';
+                log('📥 接收地址: ' + displayToAddr);
+            }
+            
+            if (contractAddrElement) {
+                const displayContractAddr = blockchainData.contractAddress || 'N/A';
+                contractAddrElement.textContent = displayContractAddr;
+                contractAddrElement.className = 'blockchain-value address';
+                log('📄 合约地址: ' + displayContractAddr);
+            }
+            
+            if (amountElement) {
+                const displayAmount = blockchainData.amountAndCurrency || 'N/A';
+                amountElement.textContent = displayAmount;
+                amountElement.className = 'blockchain-value amount';
+                log('💰 金额: ' + displayAmount);
+            }
+            
+            log('✅ 区块链信息显示完成');
+        }
+        
+        // 从支付数据中提取区块链信息 (简化版)
+        function extractBlockchainData(paymentData) {
+            log('🔍 开始提取区块链数据...');
+            
+            const blockchainData = {
+                transactionHash: null,
+                fullTransactionHash: null,
+                blockNumber: null,
+                fromAddress: null,
+                fullFromAddress: null,
+                toAddress: null,
+                fullToAddress: null,
+                contractAddress: null,
+                fullContractAddress: null,
+                amountAndCurrency: null
+            };
+            
+            // 尝试从不同的数据源提取信息
+            let sourceData = null;
+            
+            // 优先使用 confirmationData（WebSocket 监听到的数据）
+            if (paymentData.confirmationData) {
+                sourceData = paymentData.confirmationData;
+                log('✅ 使用 confirmationData 作为数据源');
+            }
+            // 其次使用直接的支付数据字段
+            else if (paymentData.transactionHash || paymentData.blockNumber) {
+                sourceData = paymentData;
+                log('✅ 使用 paymentData 作为数据源');
+            }
+            // 最后尝试从 blockchainInfo 字段
+            else if (paymentData.blockchainInfo) {
+                sourceData = paymentData.blockchainInfo;
+                log('✅ 使用 blockchainInfo 作为数据源');
+            } else {
+                log('⚠️ 没有找到合适的区块链数据源');
+            }
+            
+            if (sourceData) {
+                log('📋 源数据: ' + JSON.stringify(sourceData, null, 2));
+                
+                // 提取各种数据...
+                if (sourceData.transactionHash) {
+                    blockchainData.fullTransactionHash = sourceData.transactionHash;
+                    blockchainData.transactionHash = formatTransactionHash(sourceData.transactionHash);
+                    log('🔗 找到交易哈希: ' + sourceData.transactionHash);
+                }
+                
+                if (sourceData.blockNumber) {
+                    blockchainData.blockNumber = `#${sourceData.blockNumber}`;
+                    log('🧱 找到区块号: ' + sourceData.blockNumber);
+                }
+                
+                if (sourceData.fromAddress) {
+                    blockchainData.fullFromAddress = sourceData.fromAddress;
+                    blockchainData.fromAddress = formatAddress(sourceData.fromAddress);
+                    log('📤 找到发送地址: ' + sourceData.fromAddress);
+                }
+                
+                if (sourceData.toAddress) {
+                    blockchainData.fullToAddress = sourceData.toAddress;
+                    blockchainData.toAddress = formatAddress(sourceData.toAddress);
+                    log('📥 找到接收地址: ' + sourceData.toAddress);
+                }
+                
+                if (sourceData.contractAddress) {
+                    blockchainData.fullContractAddress = sourceData.contractAddress;
+                    blockchainData.contractAddress = formatAddress(sourceData.contractAddress);
+                    log('📄 找到合约地址: ' + sourceData.contractAddress);
+                }
+                
+                if (sourceData.amount && sourceData.tokenSymbol) {
+                    blockchainData.amountAndCurrency = `${sourceData.amount} ${sourceData.tokenSymbol}`;
+                    log('💰 找到金额: ' + sourceData.amount + ' ' + sourceData.tokenSymbol);
+                }
+            }
+            
+            // 回退到支付数据的基本信息
+            if (!blockchainData.toAddress && paymentData.walletAddress) {
+                blockchainData.fullToAddress = paymentData.walletAddress;
+                blockchainData.toAddress = formatAddress(paymentData.walletAddress);
+                log('📥 使用钱包地址作为接收地址: ' + paymentData.walletAddress);
+            }
+            
+            if (!blockchainData.amountAndCurrency && paymentData.price && paymentData.selectedPayment?.symbol) {
+                blockchainData.amountAndCurrency = `${paymentData.price} ${paymentData.selectedPayment.symbol}`;
+                log('💰 使用支付数据的金额: ' + paymentData.price + ' ' + paymentData.selectedPayment.symbol);
+            }
+            
+            if (!blockchainData.contractAddress && paymentData.selectedPayment?.contractAddress) {
+                blockchainData.fullContractAddress = paymentData.selectedPayment.contractAddress;
+                blockchainData.contractAddress = formatAddress(paymentData.selectedPayment.contractAddress);
+                log('📄 使用支付数据的合约地址: ' + paymentData.selectedPayment.contractAddress);
+            }
+            
+            log('✅ 区块链数据提取完成');
+            return blockchainData;
+        }
+        
+        // 获取区块链名称
+        function getBlockchainName(paymentData) {
+            if (paymentData.selectedNetwork?.name) {
+                return paymentData.selectedNetwork.name;
+            }
+            
+            if (paymentData.confirmationData?.networkName) {
+                return paymentData.confirmationData.networkName;
+            }
+            
+            if (paymentData.selectedNetwork?.chainId) {
+                const chainId = paymentData.selectedNetwork.chainId;
+                switch (chainId) {
+                    case 56: return 'BNB Smart Chain (BSC)';
+                    case 1: return 'Ethereum Mainnet';
+                    case 137: return 'Polygon';
+                    case 43114: return 'Avalanche';
+                    case 250: return 'Fantom';
+                    default: return `Chain ID ${chainId}`;
+                }
+            }
+            
+            return 'BNB Smart Chain (BSC)';
+        }
+        
+        // 格式化交易哈希
+        function formatTransactionHash(hash) {
+            if (!hash || hash === 'N/A') return 'N/A';
+            if (hash.length <= 20) return hash;
+            return `${hash.substring(0, 10)}...${hash.substring(hash.length - 6)}`;
+        }
+        
+        // 格式化地址
+        function formatAddress(address) {
+            if (!address || address === 'N/A') return 'N/A';
+            if (address.length <= 20) return address;
+            return `${address.substring(0, 8)}...${address.substring(address.length - 6)}`;
+        }
+        
+        // 切换显示
+        function toggleBlockchainInfo() {
+            const details = document.getElementById('blockchain-details');
+            const icon = document.getElementById('toggle-icon');
+            
+            if (details.style.display === 'none') {
+                details.style.display = 'block';
+                icon.textContent = '▼';
+            } else {
+                details.style.display = 'none';
+                icon.textContent = '▶';
+            }
+        }
+        
+        // 页面加载时初始化
+        window.addEventListener('load', function() {
+            log('🚀 支付成功页面测试工具已加载');
+            log('💡 点击测试按钮来模拟不同的支付数据情况');
+            
+            // 检查是否有现有数据
+            checkSessionStorage();
+        });
+    </script>
+</body>
+</html>

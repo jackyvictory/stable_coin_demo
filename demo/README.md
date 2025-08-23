@@ -69,8 +69,8 @@ Stable Coin 是一个现代化的 Web3 支付系统，专为加密货币捐赠�
 ### 方式一：Docker Compose 部署（推荐）
 
 ```bash
-# 进入项目目录
-cd demo
+# 进入项目部署目录
+cd demo/deploy
 
 # 启动应用（后台运行）
 docker-compose up -d
@@ -91,8 +91,8 @@ docker-compose down
 ### 方式二：Docker 容器部署
 
 ```bash
-# 进入项目目录
-cd demo
+# 进入项目部署目录
+cd demo/deploy
 
 # 构建镜像
 docker build -t evo-payment .
@@ -116,6 +116,9 @@ docker rm evo-payment-app
 使用静态文件服务器直接运行（适合开发调试）：
 
 ```bash
+# 进入项目部署目录
+cd demo
+
 # 使用 Python（推荐）
 python3 -m http.server 8080
 
@@ -181,11 +184,11 @@ const CONFIG = {
 
 ```
 demo/
-├── 📄 核心页面
+├── 📄 核心页面 (WebSocket 版本)
 │   ├── index.html              # 首页（产品选择）
-│   ├── payment.html            # 收银台页面（支付方式选择）
-│   ├── qrcode.html            # 二维码支付页面
-│   ├── success.html           # 支付成功页面
+│   ├── payment-ws.html         # 收银台页面（支付方式选择）
+│   ├── qrcode-ws.html         # 二维码支付页面
+│   ├── success-ws.html        # 支付成功页面
 │   └── test-payment-success.html # 测试页面
 │
 ├── ⚙️ 配置文件
@@ -202,20 +205,18 @@ demo/
 ├── 💻 JavaScript 模块
 │   └── js/
 │       ├── main.js            # 主页面逻辑
-│       ├── payment.js         # 支付页面逻辑
-│       ├── qrcode.js          # 二维码页面逻辑
-│       ├── success.js         # 成功页面逻辑
-│       ├── payment-handler.js # 支付会话管理
-│       ├── blockchain.js      # 区块链集成
-│       ├── ui.js              # UI 工具函数
-│       └── payment-monitor-example.js # 监控示例
+│       ├── payment-ws.js      # 支付页面逻辑 (WebSocket)
+│       ├── qrcode-ws.js       # 二维码页面逻辑 (WebSocket)
+│       ├── success-ws.js      # 成功页面逻辑 (WebSocket)
+│       ├── payment-handler-ws.js # 支付会话管理 (WebSocket)
+│       └── blockchain-ws.js   # 区块链集成 (WebSocket)
 │
 ├── 🖼️ 资源文件
 │   ├── images/
 │   │   ├── logo.png           # 应用 Logo
-│   │   ├── avatar.png         # 用户头像
+│   │   ├── avatar.jpg         # 用户头像
 │   │   ├── wallet_qr.jpg      # 钱包二维码
-│   │   └── donation_bg.jpg    # 背景图片
+│   │   └── donation_bg.png    # 背景图片
 │   └── lib/
 │       └── web3.min.js        # Web3.js 库
 │
@@ -242,24 +243,24 @@ demo/
 ## 💳 支付流程
 
 ### 1. 产品选择页面（index.html）
-- 🥜 选择捐赠产品（花生 $0.25 - 水果 $3.00）
+- 🥜 选择捐赠产品（花生 $0.01 - 水果 $3.00）
 - 📝 显示捐赠信息和团队头像
 - 🔘 点击 "Pay With Stable Coin" 按钮
 
-### 2. 支付方式选择页面（payment.html）
+### 2. 支付方式选择页面（payment-ws.html）
 - 💰 **选择代币**: USDT、USDC、USDC.e、BUSD、TUSD
 - 🌐 **选择网络**: BNB Smart Chain（BSC）
 - ⏰ 显示支付 ID 和过期时间倒计时
 - ✅ 点击 "Continue to Payment" 进入下一步
 
-### 3. 二维码支付页面（qrcode.html）
+### 3. 二维码支付页面（qrcode-ws.html）
 - 📱 显示钱包地址二维码
 - 📋 可复制的钱包地址
 - 📊 实时支付状态监控
 - 🔄 区块链交易确认进度
 - 🛠️ 内置调试工具面板
 
-### 4. 支付成功页面（success.html）
+### 4. 支付成功页面（success-ws.html）
 - ✅ 支付确认信息
 - 📄 交易详情摘要
 - 🔗 区块链浏览器链接
@@ -425,7 +426,7 @@ blockchain: {
 ### 测试和调试
 
 #### 快速测试流程
-1. 打开 `qrcode.html` 页面
+1. 打开 `qrcode-ws.html` 页面
 2. 点击 "⚙️ Debug" 按钮
 3. 使用 "🧪 快速测试" 模拟支付成功
 4. 验证页面跳转和状态更新

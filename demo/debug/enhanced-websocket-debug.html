@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enhanced WebSocket Debug</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+
+        .debug-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 2px solid #007bff;
+            border-radius: 8px;
+            background-color: #f8f9fa;
+        }
+
+        .test-button {
+            padding: 10px 15px;
+            margin: 5px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            color: white;
+        }
+
+        .btn-primary {
+            background-color: #007bff;
+        }
+
+        .btn-success {
+            background-color: #28a745;
+        }
+
+        .btn-danger {
+            background-color: #dc3545;
+        }
+
+        .btn-warning {
+            background-color: #ffc107;
+            color: #212529;
+        }
+
+        .status-display {
+            margin: 10px 0;
+            padding: 10px;
+            background-color: #ffffff;
+            border-radius: 6px;
+            border: 1px solid #dee2e6;
+            font-family: monospace;
+            font-size: 12px;
+        }
+
+        .debug-messages {
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 5px;
+            padding: 15px;
+            height: 400px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 11px;
+            margin-top: 10px;
+        }
+
+        .message-type-filter {
+            margin: 10px 0;
+            padding: 10px;
+            background-color: #e9ecef;
+            border-radius: 5px;
+        }
+
+        .filter-checkbox {
+            margin: 0 10px 0 0;
+        }
+
+        .stats-display {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 10px;
+            margin: 15px 0;
+        }
+
+        .stat-item {
+            padding: 10px;
+            background-color: #ffffff;
+            border-radius: 5px;
+            border: 1px solid #dee2e6;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #007bff;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: #6c757d;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="debug-container">
+        <h1>Enhanced WebSocket Debug</h1>
+        <p>这个页面展示增强的 WebSocket 调试信息，包括连接初始化、消息交互、心跳等所有内容。</p>
+
+        <!-- 统计信息 -->
+        <div class="test-section">
+            <h3>📊 WebSocket Statistics</h3>
+            <div class="stats-display">
+                <div class="stat-item">
+                    <div class="stat-value" id="total-messages">0</div>
+                    <div class="stat-label">Total Messages</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value" id="websocket-messages">0</div>
+                    <div class="stat-label">WebSocket Events</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value" id="block-messages">0</div>
+                    <div class="stat-label">Block Events</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value" id="heartbeat-messages">0</div>
+                    <div class="stat-label">Heartbeats</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value" id="error-messages">0</div>
+                    <div class="stat-label">Errors</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value" id="connection-time">--</div>
+                    <div class="stat-label">Connection Time</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 消息过滤器 -->
+        <div class="test-section">
+            <h3>🔍 Message Filters</h3>
+            <div class="message-type-filter">
+                <label><input type="checkbox" class="filter-checkbox" data-type="websocket" checked> WebSocket Events</label>
+                <label><input type="checkbox" class="filter-checkbox" data-type="message" checked> Messages</label>
+                <label><input type="checkbox" class="filter-checkbox" data-type="block" checked> Blocks</label>
+                <label><input type="checkbox" class="filter-checkbox" data-type="heartbeat" checked> Heartbeats</label>
+                <label><input type="checkbox" class="filter-checkbox" data-type="transaction" checked> Transactions</label>
+                <label><input type="checkbox" class="filter-checkbox" data-type="success" checked> Success</label>
+                <label><input type="checkbox" class="filter-checkbox" data-type="error" checked> Errors</label>
+                <label><input type="checkbox" class="filter-checkbox" data-type="warning" checked> Warnings</label>
+                <label><input type="checkbox" class="filter-checkbox" data-type="info" checked> Info</label>
+            </div>
+        </div>
+
+        <!-- 测试控制 -->
+        <div class="test-section">
+            <h3>🧪 Test Controls</h3>
+            <button class="test-button btn-primary" onclick="openQRCodePage()">
+                Open QR Code Page
+            </button>
+            <button class="test-button btn-success" onclick="simulateWebSocketEvents()">
+                Simulate WebSocket Events
+            </button>
+            <button class="test-button btn-warning" onclick="testMessageFiltering()">
+                Test Message Filtering
+            </button>
+            <button class="test-button btn-danger" onclick="clearAllMessages()">
+                Clear All Messages
+            </button>
+        </div>
+
+        <!-- 增强的调试消息面板 -->
+        <div class="test-section">
+            <h3>📡 Enhanced WebSocket Debug Messages</h3>
+            <div class="status-display">
+                <div><strong>Connection Status:</strong> <span id="connection-status">Not connected</span></div>
+                <div><strong>Current Endpoint:</strong> <span id="current-endpoint">None</span></div>
+                <div><strong>Messages Received:</strong> <span id="messages-received">0</span></div>
+                <div><strong>Last Activity:</strong> <span id="last-activity">Never</span></div>
+            </div>
+            
+            <div id="ws-debug-messages" style="margin-top: 15px; padding: 10px; background-color: #f8f9fa; border-radius: 6px; border: 1px solid #dee2e6;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                    <h5 style="margin: 0; color: #495057; font-size: 13px;">📡 WebSocket Messages</h5>
+                    <button onclick="clearWebSocketDebugMessages()" style="padding: 4px 8px; background: #6c757d; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 10px;">
+                        Clear
+                    </button>
+                </div>
+                <div id="ws-debug-content" class="debug-messages">
+                    <div style="color: #6c757d; font-style: italic;">Enhanced WebSocket messages will appear here...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Include required scripts -->
+    <script src="../config.js"></script>
+    <script src="../lib/web3.min.js"></script>
+    <script src="../js/blockchain-ws.js"></script>
+    <script src="../js/payment-handler-ws.js"></script>
+
+    <script>
+        let messageStats = {
+            total: 0,
+            websocket: 0,
+            message: 0,
+            block: 0,
+            heartbeat: 0,
+            transaction: 0,
+            success: 0,
+            error: 0,
+            warning: 0,
+            info: 0
+        };
+        
+        let connectionStartTime = null;
+        let messageFilters = new Set(['websocket', 'message', 'block', 'heartbeat', 'transaction', 'success', 'error', 'warning', 'info']);
+
+        // 模拟增强的 addWebSocketDebugMessage 函数
+        function addWebSocketDebugMessage(message, type = 'info', details = null) {
+            const debugContent = document.getElementById('ws-debug-content');
+            if (!debugContent) return;
+            
+            // 更新统计
+            messageStats.total++;
+            if (messageStats[type] !== undefined) {
+                messageStats[type]++;
+            }
+            updateStats();
+            
+            // 检查过滤器
+            if (!messageFilters.has(type)) {
+                return;
+            }
+            
+            const timestamp = new Date().toLocaleTimeString();
+            const messageElement = document.createElement('div');
+            messageElement.style.marginBottom = '4px';
+            messageElement.style.padding = '4px 6px';
+            messageElement.style.borderRadius = '3px';
+            messageElement.style.fontSize = '11px';
+            messageElement.style.lineHeight = '1.4';
+            messageElement.dataset.type = type;
+            
+            // 设置消息样式和图标
+            let icon = '';
+            switch (type) {
+                case 'success':
+                    messageElement.style.backgroundColor = '#d4edda';
+                    messageElement.style.color = '#155724';
+                    messageElement.style.borderLeft = '3px solid #28a745';
+                    icon = '✅';
+                    break;
+                case 'error':
+                    messageElement.style.backgroundColor = '#f8d7da';
+                    messageElement.style.color = '#721c24';
+                    messageElement.style.borderLeft = '3px solid #dc3545';
+                    icon = '❌';
+                    break;
+                case 'warning':
+                    messageElement.style.backgroundColor = '#fff3cd';
+                    messageElement.style.color = '#856404';
+                    messageElement.style.borderLeft = '3px solid #ffc107';
+                    icon = '⚠️';
+                    break;
+                case 'websocket':
+                    messageElement.style.backgroundColor = '#e8f4fd';
+                    messageElement.style.color = '#0056b3';
+                    messageElement.style.borderLeft = '3px solid #007bff';
+                    icon = '🔌';
+                    break;
+                case 'heartbeat':
+                    messageElement.style.backgroundColor = '#f0f8ff';
+                    messageElement.style.color = '#4169e1';
+                    messageElement.style.borderLeft = '3px solid #6495ed';
+                    icon = '💓';
+                    break;
+                case 'message':
+                    messageElement.style.backgroundColor = '#f8f9fa';
+                    messageElement.style.color = '#495057';
+                    messageElement.style.borderLeft = '3px solid #6c757d';
+                    icon = '📨';
+                    break;
+                case 'block':
+                    messageElement.style.backgroundColor = '#e6f3ff';
+                    messageElement.style.color = '#0066cc';
+                    messageElement.style.borderLeft = '3px solid #0080ff';
+                    icon = '🧱';
+                    break;
+                case 'transaction':
+                    messageElement.style.backgroundColor = '#fff0e6';
+                    messageElement.style.color = '#cc6600';
+                    messageElement.style.borderLeft = '3px solid #ff8000';
+                    icon = '💰';
+                    break;
+                default:
+                    messageElement.style.backgroundColor = '#f8f9fa';
+                    messageElement.style.color = '#495057';
+                    messageElement.style.borderLeft = '3px solid #6c757d';
+                    icon = 'ℹ️';
+            }
+            
+            // 构建消息内容
+            let messageText = `${icon} [${timestamp}] ${message}`;
+            
+            // 如果有详细信息，添加到消息中
+            if (details) {
+                if (typeof details === 'object') {
+                    messageText += '\n' + JSON.stringify(details, null, 2);
+                } else {
+                    messageText += '\n' + details;
+                }
+            }
+            
+            messageElement.textContent = messageText;
+            
+            // 清除初始提示消息
+            if (debugContent.children.length === 1 && debugContent.children[0].style.fontStyle === 'italic') {
+                debugContent.innerHTML = '';
+            }
+            
+            debugContent.appendChild(messageElement);
+            debugContent.scrollTop = debugContent.scrollHeight;
+            
+            // 限制消息数量
+            while (debugContent.children.length > 100) {
+                debugContent.removeChild(debugContent.firstChild);
+            }
+            
+            // 更新最后活动时间
+            document.getElementById('last-activity').textContent = timestamp;
+        }
+
+        function clearWebSocketDebugMessages() {
+            const debugContent = document.getElementById('ws-debug-content');
+            if (debugContent) {
+                debugContent.innerHTML = '<div style="color: #6c757d; font-style: italic;">Enhanced WebSocket messages will appear here...</div>';
+            }
+            
+            // 重置统计
+            Object.keys(messageStats).forEach(key => messageStats[key] = 0);
+            updateStats();
+        }
+
+        function updateStats() {
+            document.getElementById('total-messages').textContent = messageStats.total;
+            document.getElementById('websocket-messages').textContent = messageStats.websocket;
+            document.getElementById('block-messages').textContent = messageStats.block;
+            document.getElementById('heartbeat-messages').textContent = messageStats.heartbeat;
+            document.getElementById('error-messages').textContent = messageStats.error;
+            
+            if (connectionStartTime) {
+                const elapsed = Date.now() - connectionStartTime;
+                const seconds = Math.floor(elapsed / 1000);
+                document.getElementById('connection-time').textContent = seconds + 's';
+            }
+        }
+
+        function openQRCodePage() {
+            window.open('../qrcode-ws.html', '_blank');
+            addWebSocketDebugMessage('QR Code page opened in new window', 'info');
+        }
+
+        function simulateWebSocketEvents() {
+            addWebSocketDebugMessage('Starting WebSocket monitoring initialization', 'websocket', {
+                paymentId: 'test-' + Date.now(),
+                amount: 10.00,
+                token: 'USDT',
+                timestamp: new Date().toISOString()
+            });
+            
+            setTimeout(() => {
+                addWebSocketDebugMessage('Checking blockchain manager availability', 'websocket', {
+                    blockchainManager: 'object',
+                    webSocketMonitor: 'object',
+                    timestamp: new Date().toISOString()
+                });
+            }, 500);
+            
+            setTimeout(() => {
+                addWebSocketDebugMessage('WebSocket connection opened', 'success', {
+                    readyState: 1,
+                    url: 'wss://bsc-ws-node.nariox.org/',
+                    protocol: ''
+                });
+                connectionStartTime = Date.now();
+            }, 1000);
+            
+            setTimeout(() => {
+                addWebSocketDebugMessage('WebSocket message sent', 'websocket', {
+                    method: 'eth_subscribe',
+                    id: 1,
+                    params: 'Present',
+                    dataSize: '156 bytes'
+                });
+            }, 1500);
+            
+            setTimeout(() => {
+                addWebSocketDebugMessage('Heartbeat received', 'heartbeat', {
+                    heartbeat: true,
+                    timestamp: new Date().toISOString()
+                });
+            }, 2000);
+            
+            setTimeout(() => {
+                addWebSocketDebugMessage('New block received', 'block', {
+                    blockNumber: 41234567,
+                    blockHash: '0x1234567890abcdef...',
+                    timestamp: new Date().toISOString()
+                });
+            }, 2500);
+        }
+
+        function testMessageFiltering() {
+            // 测试各种消息类型
+            const messageTypes = ['websocket', 'message', 'block', 'heartbeat', 'transaction', 'success', 'error', 'warning', 'info'];
+            
+            messageTypes.forEach((type, index) => {
+                setTimeout(() => {
+                    addWebSocketDebugMessage(`Test ${type} message`, type, {
+                        testData: `This is a test ${type} message`,
+                        index: index
+                    });
+                }, index * 200);
+            });
+        }
+
+        function clearAllMessages() {
+            clearWebSocketDebugMessages();
+            addWebSocketDebugMessage('All messages cleared', 'info');
+        }
+
+        function updateMessageFilters() {
+            messageFilters.clear();
+            document.querySelectorAll('.filter-checkbox:checked').forEach(checkbox => {
+                messageFilters.add(checkbox.dataset.type);
+            });
+            
+            // 重新显示消息
+            const debugContent = document.getElementById('ws-debug-content');
+            const messages = debugContent.querySelectorAll('[data-type]');
+            
+            messages.forEach(message => {
+                if (messageFilters.has(message.dataset.type)) {
+                    message.style.display = 'block';
+                } else {
+                    message.style.display = 'none';
+                }
+            });
+        }
+
+        // 初始化
+        document.addEventListener('DOMContentLoaded', function () {
+            addWebSocketDebugMessage('Enhanced WebSocket Debug initialized', 'success');
+            
+            // 设置过滤器事件监听
+            document.querySelectorAll('.filter-checkbox').forEach(checkbox => {
+                checkbox.addEventListener('change', updateMessageFilters);
+            });
+            
+            // 定期更新统计
+            setInterval(updateStats, 1000);
+            
+            // 模拟一些初始消息
+            setTimeout(() => {
+                addWebSocketDebugMessage('Debug system ready', 'info', {
+                    version: '2.0',
+                    features: ['Message filtering', 'Statistics', 'Enhanced details']
+                });
+            }, 1000);
+        });
+    </script>
+</body>
+
+</html>

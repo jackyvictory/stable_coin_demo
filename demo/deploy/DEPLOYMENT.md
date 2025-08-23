@@ -1187,9 +1187,9 @@ echo "🧪 功能验证..."
 TESTS=(
     "https://$DOMAIN/"
     "https://$DOMAIN/health"
-    "https://$DOMAIN/payment.html"
-    "https://$DOMAIN/qrcode.html"
-    "https://$DOMAIN/success.html"
+    "https://$DOMAIN/payment-ws.html"
+    "https://$DOMAIN/qrcode-ws.html"
+    "https://$DOMAIN/success-ws.html"
 )
 
 for test_url in "${TESTS[@]}"; do

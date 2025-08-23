@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Contract Address Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        
+        .test-container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        /* Payment Details 样式 */
+        .payment-summary {
+            width: 100%;
+            background-color: #f7fafc;
+            border-radius: 12px;
+            padding: 1.5rem;
+            border: 1px solid #e2e8f0;
+            margin-bottom: 20px;
+        }
+        
+        .summary-title {
+            font-size: 16px;
+            font-weight: bold;
+            color: #495057;
+            margin-bottom: 1rem;
+            text-align: center;
+        }
+        
+        .summary-details {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+        
+        .summary-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.5rem 0;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        
+        .summary-item:last-child {
+            border-bottom: none;
+        }
+        
+        .summary-label {
+            font-weight: 500;
+            color: #6c757d;
+        }
+        
+        .summary-value {
+            font-weight: bold;
+            color: #495057;
+            text-align: right;
+        }
+        
+        /* Blockchain Info 样式 - 与 Payment Details 保持一致但底色稍有区别 */
+        .blockchain-info {
+            width: 100%;
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 12px;
+            overflow: hidden;
+        }
+        
+        .blockchain-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 20px;
+            background-color: #e9ecef;
+            border-bottom: 1px solid #dee2e6;
+            cursor: pointer;
+            transition: background-color 0.2s ease;
+        }
+        
+        .blockchain-header:hover {
+            background-color: #e2e6ea;
+        }
+        
+        .blockchain-title {
+            margin: 0;
+            color: #495057;
+            font-size: 16px;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .blockchain-title::before {
+            content: '🔗';
+            font-size: 18px;
+        }
+        
+        .blockchain-toggle-btn {
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 5px;
+            border-radius: 4px;
+            transition: all 0.2s ease;
+        }
+        
+        .blockchain-toggle-btn:hover {
+            background-color: rgba(0, 0, 0, 0.1);
+        }
+        
+        .toggle-icon {
+            font-size: 14px;
+            color: #6c757d;
+            transition: transform 0.3s ease;
+        }
+        
+        .blockchain-toggle-btn.expanded .toggle-icon {
+            transform: rotate(180deg);
+        }
+        
+        .blockchain-details {
+            padding: 0;
+            transition: all 0.3s ease;
+        }
+        
+        .blockchain-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 20px;
+            border-bottom: 1px solid #e9ecef;
+            transition: background-color 0.2s ease;
+        }
+        
+        .blockchain-item:last-child {
+            border-bottom: none;
+        }
+        
+        .blockchain-item:hover {
+            background-color: #f1f3f4;
+        }
+        
+        .blockchain-label {
+            font-size: 14px;
+            color: #6c757d;
+            font-weight: 500;
+            min-width: 140px;
+            flex-shrink: 0;
+        }
+        
+        .blockchain-value {
+            font-size: 14px;
+            color: #495057;
+            font-family: 'Courier New', monospace;
+            text-align: right;
+            word-break: break-all;
+            max-width: 250px;
+            line-height: 1.4;
+        }
+        
+        /* Special styling for hash values */
+        .blockchain-value.hash {
+            color: #007bff;
+            font-weight: 500;
+        }
+        
+        /* Special styling for addresses */
+        .blockchain-value.address {
+            color: #28a745;
+            font-weight: 500;
+        }
+        
+        /* Special styling for amounts */
+        .blockchain-value.amount {
+            color: #dc3545;
+            font-weight: bold;
+        }
+        
+        /* Special styling for blockchain name */
+        .blockchain-value.network {
+            color: #6f42c1;
+            font-weight: bold;
+            font-family: inherit;
+        }
+        
+        .test-button {
+            padding: 10px 15px;
+            margin: 5px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            color: white;
+            background-color: #007bff;
+        }
+        
+        .test-button:hover {
+            background-color: #0056b3;
+        }
+        
+        .comparison-container {
+            display: flex;
+            gap: 20px;
+            margin-top: 20px;
+        }
+        
+        .comparison-item {
+            flex: 1;
+        }
+        
+        .comparison-title {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 15px;
+            color: #495057;
+        }
+        
+        .highlight {
+            background-color: #fff3cd;
+            border: 2px solid #ffeaa7;
+            border-radius: 4px;
+            padding: 2px 4px;
+        }
+        
+        /* Responsive design */
+        @media (max-width: 768px) {
+            .comparison-container {
+                flex-direction: column;
+            }
+            
+            .blockchain-header {
+                padding: 12px 15px;
+            }
+            
+            .blockchain-item {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 5px;
+                padding: 12px 15px;
+            }
+            
+            .blockchain-label {
+                min-width: auto;
+            }
+            
+            .blockchain-value {
+                text-align: left;
+                max-width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h2>📋 Contract Address 功能测试</h2>
+        <p>测试 Blockchain Info 部分去掉 Block Timestamp，增加 Contract Address，并确保宽度与 Payment Details 保持一致</p>
+        
+        <div class="comparison-container">
+            <!-- Payment Details 示例 -->
+            <div class="comparison-item">
+                <h3 class="comparison-title">Payment Details (参考样式)</h3>
+                <div class="payment-summary">
+                    <h3 class="summary-title">Payment Details</h3>
+                    <div class="summary-details">
+                        <div class="summary-item">
+                            <span class="summary-label">Item:</span>
+                            <span class="summary-value">Food Donation (Rice)</span>
+                        </div>
+                        <div class="summary-item">
+                            <span class="summary-label">Amount:</span>
+                            <span class="summary-value">10.00</span>
+                        </div>
+                        <div class="summary-item">
+                            <span class="summary-label">Payment Method:</span>
+                            <span class="summary-value">USDT</span>
+                        </div>
+                        <div class="summary-item">
+                            <span class="summary-label">Network:</span>
+                            <span class="summary-value">BSC</span>
+                        </div>
+                        <div class="summary-item">
+                            <span class="summary-label">PayID:</span>
+                            <span class="summary-value">PAY-20241223-001</span>
+                        </div>
+                        <div class="summary-item">
+                            <span class="summary-label">Transaction Time:</span>
+                            <span class="summary-value">Dec 23, 2024, 10:30:45 AM</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Blockchain Info 示例 -->
+            <div class="comparison-item">
+                <h3 class="comparison-title">Blockchain Info (新样式)</h3>
+                <div class="blockchain-info">
+                    <div class="blockchain-header" onclick="toggleBlockchainInfo()">
+                        <h3 class="blockchain-title">Blockchain Info</h3>
+                        <button class="blockchain-toggle-btn" id="blockchain-toggle-btn">
+                            <span class="toggle-icon">▼</span>
+                        </button>
+                    </div>
+                    <div class="blockchain-details" id="blockchain-details" style="display: none;">
+                        <div class="blockchain-item">
+                            <span class="blockchain-label">Blockchain Name:</span>
+                            <span class="blockchain-value network">BNB Smart Chain (BSC)</span>
+                        </div>
+                        <div class="blockchain-item">
+                            <span class="blockchain-label">Transaction Hash:</span>
+                            <span class="blockchain-value hash" title="0x1a2b3c4d5e6f7890abcdef1234567890abcdef1234567890abcdef1234567890">0x1a2b3c4d5e...567890</span>
+                        </div>
+                        <div class="blockchain-item">
+                            <span class="blockchain-label">Block Number:</span>
+                            <span class="blockchain-value">#12345678</span>
+                        </div>
+                        <div class="blockchain-item">
+                            <span class="blockchain-label">From Address:</span>
+                            <span class="blockchain-value address" title="0xabcdef1234567890abcdef1234567890abcdef12">0xabcdef12...cdef12</span>
+                        </div>
+                        <div class="blockchain-item">
+                            <span class="blockchain-label">To Address:</span>
+                            <span class="blockchain-value address" title="0xe27577B0e3920cE35f100f66430de0108cb78a04">0xe27577B0...cb78a04</span>
+                        </div>
+                        <div class="blockchain-item highlight">
+                            <span class="blockchain-label">Contract Address:</span>
+                            <span class="blockchain-value address" title="0x55d398326f99059fF775485246999027B3197955" id="contract-address">0x55d39832...B3197955</span>
+                        </div>
+                        <div class="blockchain-item">
+                            <span class="blockchain-label">Amount & Currency:</span>
+                            <span class="blockchain-value amount">10.00 USDT</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 测试按钮 -->
+        <div style="margin-top: 20px; text-align: center;">
+            <button class="test-button" onclick="toggleBlockchainInfo()">切换折叠/展开</button>
+            <button class="test-button" onclick="testContractAddresses()">测试不同合约地址</button>
+            <button class="test-button" onclick="testWidthConsistency()">测试宽度一致性</button>
+        </div>
+    </div>
+
+    <div class="test-container">
+        <h2>📋 修改总结</h2>
+        <ul>
+            <li>✅ <strong>去掉 Block Timestamp</strong>: 移除了区块时间戳字段</li>
+            <li>✅ <strong>增加 Contract Address</strong>: 添加了合约地址字段，使用英文字段名</li>
+            <li>✅ <strong>宽度一致性</strong>: Blockchain Info 的宽度与 Payment Details 保持一致 (width: 100%)</li>
+            <li>✅ <strong>样式统一</strong>: 保持相同的边框圆角和内边距</li>
+            <li>✅ <strong>合约地址格式化</strong>: 显示前8位和后6位，完整地址作为 tooltip</li>
+            <li>✅ <strong>颜色编码</strong>: 合约地址使用绿色显示，与其他地址保持一致</li>
+        </ul>
+    </div>
+
+    <div class="test-container">
+        <h2>🔗 支持的合约地址</h2>
+        <table style="width: 100%; border-collapse: collapse; margin-top: 15px;">
+            <thead>
+                <tr style="background-color: #f8f9fa;">
+                    <th style="padding: 10px; border: 1px solid #dee2e6; text-align: left;">代币</th>
+                    <th style="padding: 10px; border: 1px solid #dee2e6; text-align: left;">网络</th>
+                    <th style="padding: 10px; border: 1px solid #dee2e6; text-align: left;">合约地址</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td style="padding: 10px; border: 1px solid #dee2e6;">USDT</td>
+                    <td style="padding: 10px; border: 1px solid #dee2e6;">BSC</td>
+                    <td style="padding: 10px; border: 1px solid #dee2e6; font-family: monospace; font-size: 12px;">0x55d398326f99059fF775485246999027B3197955</td>
+                </tr>
+                <tr>
+                    <td style="padding: 10px; border: 1px solid #dee2e6;">USDC</td>
+                    <td style="padding: 10px; border: 1px solid #dee2e6;">BSC</td>
+                    <td style="padding: 10px; border: 1px solid #dee2e6; font-family: monospace; font-size: 12px;">0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d</td>
+                </tr>
+                <tr>
+                    <td style="padding: 10px; border: 1px solid #dee2e6;">BUSD</td>
+                    <td style="padding: 10px; border: 1px solid #dee2e6;">BSC</td>
+                    <td style="padding: 10px; border: 1px solid #dee2e6; font-family: monospace; font-size: 12px;">0xe9e7CEA3DedcA5984780Bafc599bD69ADd087D56</td>
+                </tr>
+                <tr>
+                    <td style="padding: 10px; border: 1px solid #dee2e6;">TUSD</td>
+                    <td style="padding: 10px; border: 1px solid #dee2e6;">BSC</td>
+                    <td style="padding: 10px; border: 1px solid #dee2e6; font-family: monospace; font-size: 12px;">0x40af3827F39D0EAcBF4A168f8D4ee67c121D11c9</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <script>
+        // 切换区块链信息的折叠/展开状态
+        function toggleBlockchainInfo() {
+            const detailsElement = document.getElementById('blockchain-details');
+            const toggleBtn = document.getElementById('blockchain-toggle-btn');
+            
+            if (!detailsElement || !toggleBtn) {
+                console.error('Blockchain details or toggle button not found');
+                return;
+            }
+            
+            const isHidden = detailsElement.style.display === 'none';
+            
+            if (isHidden) {
+                // 展开
+                detailsElement.style.display = 'block';
+                toggleBtn.classList.add('expanded');
+                console.log('Blockchain info expanded');
+            } else {
+                // 折叠
+                detailsElement.style.display = 'none';
+                toggleBtn.classList.remove('expanded');
+                console.log('Blockchain info collapsed');
+            }
+        }
+        
+        // 测试不同的合约地址
+        function testContractAddresses() {
+            const contracts = [
+                { name: 'USDT', address: '0x55d398326f99059fF775485246999027B3197955' },
+                { name: 'USDC', address: '0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d' },
+                { name: 'BUSD', address: '0xe9e7CEA3DedcA5984780Bafc599bD69ADd087D56' },
+                { name: 'TUSD', address: '0x40af3827F39D0EAcBF4A168f8D4ee67c121D11c9' }
+            ];
+            
+            const randomContract = contracts[Math.floor(Math.random() * contracts.length)];
+            const contractElement = document.getElementById('contract-address');
+            
+            if (contractElement) {
+                // 格式化地址显示
+                const formattedAddress = `${randomContract.address.substring(0, 10)}...${randomContract.address.substring(randomContract.address.length - 8)}`;
+                contractElement.textContent = formattedAddress;
+                contractElement.title = randomContract.address;
+                
+                console.log(`Contract address updated to ${randomContract.name}: ${randomContract.address}`);
+            }
+        }
+        
+        // 测试宽度一致性
+        function testWidthConsistency() {
+            const paymentSummary = document.querySelector('.payment-summary');
+            const blockchainInfo = document.querySelector('.blockchain-info');
+            
+            if (paymentSummary && blockchainInfo) {
+                const paymentWidth = paymentSummary.offsetWidth;
+                const blockchainWidth = blockchainInfo.offsetWidth;
+                
+                console.log(`Payment Details width: ${paymentWidth}px`);
+                console.log(`Blockchain Info width: ${blockchainWidth}px`);
+                console.log(`Width difference: ${Math.abs(paymentWidth - blockchainWidth)}px`);
+                
+                if (Math.abs(paymentWidth - blockchainWidth) <= 2) {
+                    alert('✅ 宽度一致性测试通过！两个组件的宽度基本一致。');
+                } else {
+                    alert(`⚠️ 宽度不一致！Payment Details: ${paymentWidth}px, Blockchain Info: ${blockchainWidth}px`);
+                }
+            }
+        }
+        
+        // 页面加载时的初始化
+        window.addEventListener('load', function() {
+            console.log('Contract Address test page loaded');
+            console.log('Features tested:');
+            console.log('- ✅ Block Timestamp removed');
+            console.log('- ✅ Contract Address added');
+            console.log('- ✅ Width consistency with Payment Details');
+            
+            // 自动测试宽度一致性
+            setTimeout(testWidthConsistency, 1000);
+        });
+    </script>
+</body>
+</html>

@@ -216,7 +216,7 @@
 
             log('🔄 Navigating to QR code page...');
             setTimeout(() => {
-                window.location.href = 'qrcode.html';
+                window.location.href = 'qrcode-ws.html';
             }, 1000);
         }
 
@@ -253,7 +253,7 @@
             log('🔄 Navigating to success page...');
 
             setTimeout(() => {
-                window.location.href = 'success.html';
+                window.location.href = 'success-ws.html';
             }, 2000);
         }
 
@@ -270,7 +270,7 @@
                 log('💡 Tip: On the QR code page, click "⚙️ Debug" button, then click "🎯 Complete Flow Test"');
 
                 setTimeout(() => {
-                    window.location.href = 'qrcode.html';
+                    window.location.href = 'qrcode-ws.html';
                 }, 2000);
             }, 1000);
         }
@@ -291,13 +291,13 @@
                 }));
             }
             log('💳 Navigating to payment selection page...');
-            window.location.href = 'payment.html';
+            window.location.href = 'payment-ws.html';
         }
 
         function testQRCodePage() {
             createMockPayment();
             log('📱 Navigating to QR code page...');
-            window.location.href = 'qrcode.html';
+            window.location.href = 'qrcode-ws.html';
         }
 
         function testSuccessPage() {

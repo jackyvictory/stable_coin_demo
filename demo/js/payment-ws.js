@@ -1,4 +1,4 @@
-// Stable Coin - Payment Page JavaScript
+// Stable Coin - Payment Page JavaScript (WebSocket Version)
 
 // 全局变量
 let selectedPayment = null;
@@ -51,7 +51,7 @@ function displayPaymentInfo() {
         const itemName = productInfo ? productInfo.description : `Food Donation (${paymentData.product})`;
         
         itemElement.textContent = itemName;
-        amountElement.textContent = `$${paymentData.price.toFixed(2)}`;
+        amountElement.textContent = `${paymentData.price.toFixed(2)}`;
         
         // 显示 PayID
         payIdElement.textContent = paymentData.paymentId;
@@ -252,7 +252,7 @@ function updateContinueButton() {
     }
 }
 
-// 进入二维码页面
+// 进入二维码页面 (WebSocket 版本)
 function proceedToQRCode() {
     if (!selectedPayment || !selectedNetwork || !paymentData) {
         alert('Please select both payment method and network.');
@@ -270,13 +270,13 @@ function proceedToQRCode() {
         if (updatedPayment) {
             console.log('Updated payment with method and network:', updatedPayment);
             
-            // 导航到二维码页面
-            window.paymentHandler.navigateToPage('qr-code', paymentData.paymentId);
+            // 导航到 WebSocket 版本的二维码页面
+            window.location.href = 'qrcode-ws.html';
         } else {
             alert('Failed to update payment information.');
         }
     } else {
-        // 回退到传统方式
+        // 回退到传统方式，但跳转到 WebSocket 版本
         const updatedPaymentData = {
             ...paymentData,
             selectedPayment: selectedPayment,
@@ -285,14 +285,14 @@ function proceedToQRCode() {
         };
         
         sessionStorage.setItem('paymentData', JSON.stringify(updatedPaymentData));
-        console.log('Proceeding to QR code with:', updatedPaymentData);
-        window.location.href = 'qrcode.html';
+        console.log('Proceeding to WebSocket QR code with:', updatedPaymentData);
+        window.location.href = 'qrcode-ws.html';
     }
 }
 
 // 导出函数供其他模块使用
 if (typeof window !== 'undefined') {
-    window.PaymentPage = {
+    window.PaymentPageWS = {
         selectPayment,
         selectNetwork,
         togglePaymentDropdown,

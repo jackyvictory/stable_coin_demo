@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebSocket 优化测试</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            color: #2c3e50;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .status-card {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 15px 0;
+        }
+
+        .status-card h3 {
+            margin-top: 0;
+            color: #495057;
+        }
+
+        .btn {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+            font-size: 14px;
+        }
+
+        .btn:hover {
+            background: #0056b3;
+        }
+
+        .btn.success {
+            background: #28a745;
+        }
+
+        .btn.warning {
+            background: #ffc107;
+            color: #212529;
+        }
+
+        .log-area {
+            background: #1e1e1e;
+            color: #ffffff;
+            padding: 15px;
+            border-radius: 5px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            height: 300px;
+            overflow-y: auto;
+            margin: 15px 0;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+
+        .stat-item {
+            background: #e9ecef;
+            padding: 15px;
+            border-radius: 5px;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #007bff;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: #6c757d;
+            margin-top: 5px;
+        }
+
+        .optimization-info {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+        }
+
+        .optimization-info h3 {
+            margin-top: 0;
+        }
+
+        .benefit-list {
+            list-style: none;
+            padding: 0;
+        }
+
+        .benefit-list li {
+            padding: 5px 0;
+            padding-left: 25px;
+            position: relative;
+        }
+
+        .benefit-list li:before {
+            content: "✅";
+            position: absolute;
+            left: 0;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>🚀 WebSocket 优化测试</h1>
+
+        <div class="optimization-info">
+            <h3>🎯 WebSocket 优化方案</h3>
+            <p>从监听 <code>newHeads</code> 改为直接监听 <code>logs</code> 事件，实现精确的 Transfer 事件监听。</p>
+            <ul class="benefit-list">
+                <li>精确匹配：只接收与收款地址相关的 Transfer 事件</li>
+                <li>减少网络请求：不需要扫描整个区块</li>
+                <li>实时性更好：直接获得相关交易，无需额外 RPC 调用</li>
+                <li>资源消耗更少：不处理无关的区块和交易</li>
+            </ul>
+        </div>
+
+        <div class="status-card">
+            <h3>📊 连接状态</h3>
+            <div id="connectionStatus">正在初始化...</div>
+            <div style="margin-top: 10px;">
+                <button class="btn" onclick="connectWebSocket()">连接 WebSocket</button>
+                <button class="btn warning" onclick="disconnectWebSocket()">断开连接</button>
+                <button class="btn success" onclick="showStats()">显示统计</button>
+            </div>
+        </div>
+
+        <div class="stats-grid">
+            <div class="stat-item">
+                <div class="stat-value" id="directEvents">0</div>
+                <div class="stat-label">直接 Transfer 事件</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value" id="paymentsDetected">0</div>
+                <div class="stat-label">检测到的支付</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value" id="rpcSaved">0</div>
+                <div class="stat-label">节省的 RPC 调用</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value" id="runtime">0s</div>
+                <div class="stat-label">运行时间</div>
+            </div>
+        </div>
+
+        <div class="status-card">
+            <h3>🔍 支付监听测试</h3>
+            <p>收款地址: <code id="receiverAddress">加载中...</code></p>
+            <div>
+                <button class="btn" onclick="startPaymentTest()">开始支付监听测试</button>
+                <button class="btn warning" onclick="stopPaymentTest()">停止测试</button>
+            </div>
+        </div>
+
+        <div class="status-card">
+            <h3>📝 实时日志</h3>
+            <div class="log-area" id="logArea"></div>
+            <button class="btn" onclick="clearLogs()">清空日志</button>
+        </div>
+    </div>
+
+    <!-- 引入必要的库 -->
+    <script src="https://cdn.jsdelivr.net/npm/web3@1.8.0/dist/web3.min.js"></script>
+    <script src="../js/blockchain-ws.js"></script>
+
+    <script>
+        let testPaymentId = null;
+        let statsInterval = null;
+
+        // 页面加载完成后初始化
+        document.addEventListener('DOMContentLoaded', function () {
+            log('🚀 页面加载完成，等待 WebSocket 初始化...');
+
+            // 监听区块链准备就绪事件
+            window.addEventListener('blockchainReady', function (event) {
+                log('✅ WebSocket 区块链管理器初始化完成');
+                log('🎯 优化模式已启用：直接监听 Transfer 事件');
+                updateConnectionStatus();
+                updateReceiverAddress();
+                startStatsUpdate();
+            });
+
+            // 监听支付检测事件
+            if (window.webSocketMonitor) {
+                window.webSocketMonitor.on('paymentDetected', function (paymentData) {
+                    log(`💰 检测到支付: ${paymentData.amount} ${paymentData.tokenSymbol} from ${paymentData.fromAddress}`);
+                    updateStats();
+                });
+
+                window.webSocketMonitor.on('connected', function (data) {
+                    log(`🔗 WebSocket 连接成功: ${data.endpoint}`);
+                    updateConnectionStatus();
+                });
+
+                window.webSocketMonitor.on('disconnected', function (data) {
+                    log(`🔌 WebSocket 连接断开: ${data.reason || '未知原因'}`);
+                    updateConnectionStatus();
+                });
+            }
+        });
+
+        // 日志函数
+        function log(message) {
+            const logArea = document.getElementById('logArea');
+            const timestamp = new Date().toLocaleTimeString();
+            logArea.innerHTML += `[${timestamp}] ${message}\n`;
+            logArea.scrollTop = logArea.scrollHeight;
+        }
+
+        // 更新连接状态
+        function updateConnectionStatus() {
+            const statusDiv = document.getElementById('connectionStatus');
+            if (window.webSocketMonitor) {
+                const status = window.webSocketMonitor.getConnectionStatus();
+                statusDiv.innerHTML = `
+                    <strong>连接状态:</strong> ${status.isConnected ? '✅ 已连接' : '❌ 未连接'}<br>
+                    <strong>当前端点:</strong> ${status.currentEndpoint || '无'}<br>
+                    <strong>订阅数量:</strong> ${status.activeSubscriptions || 0}<br>
+                    <strong>WebSocket 状态:</strong> ${status.readyStateText || '未知'}
+                `;
+            } else {
+                statusDiv.innerHTML = '⏳ WebSocket 监听器未初始化';
+            }
+        }
+
+        // 更新收款地址显示
+        function updateReceiverAddress() {
+            const addressSpan = document.getElementById('receiverAddress');
+            if (window.BLOCKCHAIN_CONFIG && window.BLOCKCHAIN_CONFIG.receiverAddress) {
+                addressSpan.textContent = window.BLOCKCHAIN_CONFIG.receiverAddress;
+            }
+        }
+
+        // 更新统计数据
+        function updateStats() {
+            if (window.blockchainManager && window.blockchainManager.performanceStats) {
+                const stats = window.blockchainManager.performanceStats;
+                const runtime = (Date.now() - stats.optimizationStartTime) / 1000;
+
+                document.getElementById('directEvents').textContent = stats.directTransferEvents || 0;
+                document.getElementById('paymentsDetected').textContent = stats.paymentsDetected || 0;
+                document.getElementById('rpcSaved').textContent = stats.rpcCallsSaved || 0;
+                document.getElementById('runtime').textContent = runtime.toFixed(1) + 's';
+            }
+        }
+
+        // 开始定期更新统计
+        function startStatsUpdate() {
+            if (statsInterval) clearInterval(statsInterval);
+            statsInterval = setInterval(updateStats, 1000);
+            updateStats(); // 立即更新一次
+        }
+
+        // 连接 WebSocket
+        async function connectWebSocket() {
+            if (window.webSocketMonitor) {
+                log('🔌 正在连接 WebSocket...');
+                const success = await window.webSocketMonitor.connect();
+                if (success) {
+                    log('✅ WebSocket 连接成功');
+                } else {
+                    log('❌ WebSocket 连接失败');
+                }
+                updateConnectionStatus();
+            }
+        }
+
+        // 断开 WebSocket
+        function disconnectWebSocket() {
+            if (window.webSocketMonitor) {
+                log('🔌 正在断开 WebSocket...');
+                window.webSocketMonitor.disconnect();
+                log('✅ WebSocket 已断开');
+                updateConnectionStatus();
+            }
+        }
+
+        // 显示统计信息
+        function showStats() {
+            if (window.showOptimizationStats) {
+                window.showOptimizationStats();
+                log('📊 优化统计信息已显示在控制台');
+            }
+        }
+
+        // 开始支付监听测试
+        function startPaymentTest() {
+            if (window.blockchainManager) {
+                testPaymentId = 'test_' + Date.now();
+
+                const testConfig = {
+                    expectedAmount: 10, // 期望金额
+                    tokenSymbol: 'USDT', // 代币类型
+                    timeout: 30 * 60 * 1000, // 30分钟超时
+                    requiredConfirmations: 1
+                };
+
+                log(`🔍 开始支付监听测试 (ID: ${testPaymentId})`);
+                log(`💰 期望金额: ${testConfig.expectedAmount} ${testConfig.tokenSymbol}`);
+                log(`📍 收款地址: ${window.BLOCKCHAIN_CONFIG.receiverAddress}`);
+
+                window.blockchainManager.startPaymentMonitoring(
+                    testPaymentId,
+                    testConfig,
+                    {
+                        onSuccess: (data) => {
+                            log(`🎉 支付测试成功! 交易哈希: ${data.transfer.transactionHash}`);
+                            log(`💰 实际金额: ${data.transfer.formattedAmount} ${data.transfer.tokenSymbol}`);
+                        },
+                        onTimeout: () => {
+                            log(`⏰ 支付测试超时 (30分钟)`);
+                        },
+                        onError: (error) => {
+                            log(`❌ 支付测试错误: ${error.message}`);
+                        },
+                        onProgress: (data) => {
+                            log(`⏳ 支付进度: ${data.status} (确认数: ${data.confirmations})`);
+                        }
+                    }
+                );
+            }
+        }
+
+        // 停止支付监听测试
+        function stopPaymentTest() {
+            if (testPaymentId && window.blockchainManager) {
+                window.blockchainManager.stopPaymentMonitoring(testPaymentId);
+                log(`🛑 已停止支付监听测试 (ID: ${testPaymentId})`);
+                testPaymentId = null;
+            }
+        }
+
+        // 清空日志
+        function clearLogs() {
+            document.getElementById('logArea').innerHTML = '';
+        }
+
+        // 页面卸载时清理
+        window.addEventListener('beforeunload', function () {
+            if (statsInterval) clearInterval(statsInterval);
+            if (testPaymentId) stopPaymentTest();
+        });
+    </script>
+</body>
+
+</html>

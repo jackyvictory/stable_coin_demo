@@ -2,7 +2,7 @@
 
 // 全局变量
 let selectedProduct = null;
-let selectedPrice = 0.25; // 默认选择 Peanut
+let selectedPrice = 0.01; // 默认选择 Peanut
 
 // 页面加载完成后初始化
 document.addEventListener('DOMContentLoaded', function() {
@@ -20,8 +20,9 @@ function initializeProductSelection() {
     if (defaultProduct) {
         defaultProduct.checked = true;
         selectedProduct = 'peanut';
-        selectedPrice = 0.25;
+        selectedPrice = parseFloat(defaultProduct.dataset.price) || 0.01;
         updateProductItemStyles();
+        console.log('🥜 Default product selected:', selectedProduct, 'Price:', selectedPrice);
     }
     
     // 为每个单选按钮添加事件监听器
@@ -33,7 +34,8 @@ function initializeProductSelection() {
                 updateProductItemStyles();
                 updatePaymentButton();
                 
-                console.log('Selected product:', selectedProduct, 'Price:', selectedPrice);
+                console.log('✅ Product selection changed:', selectedProduct, 'Price:', selectedPrice);
+                console.log('📊 Data attribute price:', this.dataset.price);
             }
         });
     });
@@ -76,41 +78,47 @@ function updatePaymentButton() {
     }
 }
 
-// 处理支付按钮点击
+// 处理支付按钮点击 (WebSocket 版本)
 function proceedToPayment() {
     if (!selectedProduct || !selectedPrice) {
         alert('Please select a product first.');
         return;
     }
     
-    // 等待支付处理器初始化
-    const waitForPaymentHandler = () => {
-        if (typeof window.paymentHandler !== 'undefined') {
-            // 获取产品信息
-            const productInfo = getProductInfo(selectedProduct);
-            if (!productInfo) {
-                alert('Invalid product selected.');
-                return;
-            }
-            
-            // 创建支付会话
-            const paymentSession = window.paymentHandler.createPaymentSession({
-                key: selectedProduct,
-                name: productInfo.name,
-                price: selectedPrice
-            });
-            
-            console.log('Created payment session:', paymentSession);
-            
-            // 导航到收银台页面
-            window.paymentHandler.navigateToPage('payment-selection', paymentSession.paymentId);
-        } else {
-            console.log('Waiting for payment handler to initialize...');
-            setTimeout(waitForPaymentHandler, 100);
-        }
+    console.log('🔌 Starting WebSocket payment flow...');
+    console.log('🔍 Selected product:', selectedProduct, 'Selected price:', selectedPrice);
+    
+    // 获取产品信息
+    const productInfo = getProductInfo(selectedProduct);
+    if (!productInfo) {
+        alert('Invalid product selected.');
+        return;
+    }
+    
+    console.log('📦 Product info:', productInfo);
+    
+    // 创建支付数据 (简化版，直接跳转)
+    const paymentData = {
+        paymentId: generatePaymentId(),
+        product: selectedProduct,
+        productName: productInfo.name,
+        price: selectedPrice, // 使用实际选中的价格，而不是产品配置中的价格
+        currency: 'USD',
+        status: 'pending',
+        createdAt: Date.now(),
+        expiresAt: Date.now() + (30 * 60 * 1000), // 30分钟后过期
+        timestamp: Date.now(),
+        monitoringMode: 'websocket' // 标记为 WebSocket 版本
     };
     
-    waitForPaymentHandler();
+    // 保存到 sessionStorage
+    sessionStorage.setItem('paymentData', JSON.stringify(paymentData));
+    
+    console.log('💾 Created WebSocket payment session:', paymentData);
+    console.log('💰 Final price in payment data:', paymentData.price);
+    
+    // 直接跳转到 WebSocket 版本的支付页面
+    window.location.href = 'payment-ws.html';
 }
 
 // 生成支付 ID
@@ -132,7 +140,7 @@ const PRODUCTS = {
     peanut: {
         name: 'Peanut',
         emoji: '🥜',
-        price: 0.25,
+        price: 0.01,
         description: 'Food Donation (Peanut)'
     },
     rice: {

@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebSocket 跳转测试</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .test-card {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+        .test-button {
+            background: #28a745;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px;
+            transition: background-color 0.3s;
+        }
+        .test-button:hover {
+            background: #1e7e34;
+        }
+        .status {
+            margin: 20px 0;
+            padding: 15px;
+            border-radius: 6px;
+            font-weight: bold;
+        }
+        .status-success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .status-info {
+            background-color: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        .countdown {
+            font-size: 24px;
+            color: #007bff;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-card">
+        <h1>WebSocket 支付跳转测试</h1>
+        <p>测试修复后的 WebSocket 版本是否能正确跳转到成功页面</p>
+        
+        <div id="status" class="status status-info">
+            点击按钮开始测试
+        </div>
+        
+        <button class="test-button" onclick="testPaymentJump()">
+            🧪 测试支付成功跳转
+        </button>
+        
+        <button class="test-button" onclick="goToQRPage()">
+            📱 前往二维码页面
+        </button>
+        
+        <div id="countdown" class="countdown" style="display: none;"></div>
+    </div>
+
+    <script>
+        function updateStatus(message, type = 'info') {
+            const statusDiv = document.getElementById('status');
+            statusDiv.textContent = message;
+            statusDiv.className = `status status-${type}`;
+        }
+
+        function testPaymentJump() {
+            updateStatus('开始测试支付跳转...', 'info');
+            
+            // 创建模拟的支付数据
+            const mockPaymentData = {
+                paymentId: 'test_ws_jump_' + Date.now(),
+                product: 'rice',
+                price: 10.00,
+                selectedPayment: { symbol: 'USDT', name: 'Tether USD' },
+                selectedNetwork: { symbol: 'BSC', name: 'BNB Smart Chain' },
+                timestamp: Date.now(),
+                expiresAt: Date.now() + 30 * 60 * 1000,
+                status: 'confirmed',
+                confirmedAt: Date.now(),
+                performanceMetrics: {
+                    detectionTime: 2500,
+                    detectionMethod: 'WebSocket',
+                    matchScore: 100,
+                    confirmations: 1
+                },
+                verificationResult: {
+                    verified: true,
+                    transfer: {
+                        transactionHash: '0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef',
+                        blockNumber: 12345678,
+                        formattedAmount: 10.00,
+                        tokenSymbol: 'USDT'
+                    },
+                    matchScore: 100
+                }
+            };
+            
+            // 保存到 sessionStorage
+            sessionStorage.setItem('paymentData', JSON.stringify(mockPaymentData));
+            
+            updateStatus('模拟支付数据已创建，准备跳转...', 'success');
+            
+            // 倒计时跳转
+            let countdown = 3;
+            const countdownDiv = document.getElementById('countdown');
+            countdownDiv.style.display = 'block';
+            
+            const countdownInterval = setInterval(() => {
+                countdownDiv.textContent = `${countdown} 秒后跳转到成功页面...`;
+                countdown--;
+                
+                if (countdown < 0) {
+                    clearInterval(countdownInterval);
+                    updateStatus('正在跳转到成功页面...', 'success');
+                    
+                    // 跳转到 WebSocket 版本的成功页面
+                    setTimeout(() => {
+                        window.location.href = '../success-ws.html';
+                    }, 500);
+                }
+            }, 1000);
+        }
+
+        function goToQRPage() {
+            updateStatus('准备跳转到二维码页面...', 'info');
+            
+            // 创建基本的支付数据
+            const mockPaymentData = {
+                paymentId: 'test_qr_' + Date.now(),
+                product: 'rice',
+                price: 10.00,
+                selectedPayment: { symbol: 'USDT', name: 'Tether USD' },
+                selectedNetwork: { symbol: 'BSC', name: 'BNB Smart Chain' },
+                timestamp: Date.now(),
+                expiresAt: Date.now() + 30 * 60 * 1000,
+                status: 'waiting'
+            };
+            
+            sessionStorage.setItem('paymentData', JSON.stringify(mockPaymentData));
+            
+            setTimeout(() => {
+                window.location.href = '../qrcode-ws.html';
+            }, 500);
+        }
+
+        // 页面加载时检查是否有支付数据
+        document.addEventListener('DOMContentLoaded', function() {
+            const existingData = sessionStorage.getItem('paymentData');
+            if (existingData) {
+                try {
+                    const paymentData = JSON.parse(existingData);
+                    updateStatus(`发现现有支付数据: ${paymentData.paymentId}`, 'info');
+                } catch (error) {
+                    updateStatus('发现无效的支付数据，已清理', 'info');
+                    sessionStorage.removeItem('paymentData');
+                }
+            }
+        });
+    </script>
+</body>
+</html>

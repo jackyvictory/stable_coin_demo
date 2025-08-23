@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Final Payment Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .debug-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        .section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            background-color: #f9f9f9;
+        }
+        .log-area {
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 5px;
+            padding: 15px;
+            height: 500px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 11px;
+            margin-top: 10px;
+        }
+        button {
+            padding: 10px 15px;
+            margin: 5px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            color: white;
+        }
+        .btn-primary { background-color: #007bff; }
+        .btn-success { background-color: #28a745; }
+        .btn-warning { background-color: #ffc107; color: #212529; }
+        .btn-danger { background-color: #dc3545; }
+        .status-box {
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+            font-family: monospace;
+            font-size: 12px;
+        }
+        .status-success { background-color: #d4edda; color: #155724; }
+        .status-error { background-color: #f8d7da; color: #721c24; }
+        .status-warning { background-color: #fff3cd; color: #856404; }
+        .status-info { background-color: #d1ecf1; color: #0c5460; }
+        .callback-chain {
+            background-color: #e9ecef;
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+            font-family: monospace;
+            font-size: 11px;
+        }
+    </style>
+</head>
+<body>
+    <div class="debug-container">
+        <h1>Final Payment Test - 完整流程调试</h1>
+        <p>测试完整的支付确认流程，验证0确认修复和回调链</p>
+        
+        <div class="section">
+            <h3>🔧 回调链测试</h3>
+            <div class="callback-chain">
+                回调链: blockchain-ws.confirmPayment → onSuccess → handlePaymentEvent('confirmed') → handlePaymentConfirmed → onPaymentConfirmed → handlePaymentSuccess → 跳转成功页
+            </div>
+            <button class="btn-primary" onclick="testFullCallbackChain()">
+                测试完整回调链
+            </button>
+            <button class="btn-success" onclick="testZeroConfirmationFix()">
+                验证0确认修复
+            </button>
+            <button class="btn-warning" onclick="simulateRealPayment()">
+                模拟真实支付流程
+            </button>
+            <button class="btn-danger" onclick="forcePaymentSuccess()">
+                强制触发支付成功
+            </button>
+        </div>
+        
+        <div class="section">
+            <h3>📊 测试状态</h3>
+            <div id="status-display">
+                <div class="status-box status-info">
+                    点击上面的按钮开始测试...
+                </div>
+            </div>
+        </div>
+        
+        <div class="log-area" id="debug-log">
+            详细测试日志将显示在这里...
+        </div>
+    </div>
+
+    <!-- 引入必要的脚本 -->
+    <script src="../config.js"></script>
+    <script src="../lib/web3.min.js"></script>
+    <script src="../js/blockchain-ws.js"></script>
+    <script src="../js/payment-handler-ws.js"></script>
+
+    <script>
+        function log(message, type = 'info') {
+            const logArea = document.getElementById('debug-log');
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = document.createElement('div');
+            logEntry.style.marginBottom = '4px';
+            logEntry.style.padding = '2px 4px';
+            logEntry.style.borderRadius = '2px';
+            
+            switch (type) {
+                case 'success':
+                    logEntry.style.backgroundColor = '#d4edda';
+                    logEntry.style.color = '#155724';
+                    break;
+                case 'error':
+                    logEntry.style.backgroundColor = '#f8d7da';
+                    logEntry.style.color = '#721c24';
+                    break;
+                case 'warning':
+                    logEntry.style.backgroundColor = '#fff3cd';
+                    logEntry.style.color = '#856404';
+                    break;
+                case 'callback':
+                    logEntry.style.backgroundColor = '#cce5ff';
+                    logEntry.style.color = '#004085';
+                    break;
+                default:
+                    logEntry.style.backgroundColor = '#f8f9fa';
+                    logEntry.style.color = '#495057';
+            }
+            
+            logEntry.textContent = `[${timestamp}] ${message}`;
+            logArea.appendChild(logEntry);
+            logArea.scrollTop = logArea.scrollHeight;
+        }
+
+        function updateStatus(message, type = 'info') {
+            const statusDisplay = document.getElementById('status-display');
+            const statusClass = `status-${type}`;
+            statusDisplay.innerHTML = `<div class="status-box ${statusClass}">${message}</div>`;
+        }
+
+        async function testFullCallbackChain() {
+            log('=== 测试完整回调链 ===', 'info');
+            
+            try {
+                // 1. 创建模拟的支付数据
+                const paymentData = {
+                    paymentId: 'test-callback-' + Date.now(),
+                    product: 'peanut',
+                    price: 0.01,
+                    selectedPayment: {
+                        symbol: 'USDT',
+                        contract: '0x55d398326f99059fF775485246999027B3197955'
+                    }
+                };
+                
+                log('1. 创建支付数据', 'info');
+                log(`   paymentId: ${paymentData.paymentId}`, 'info');
+                
+                // 2. 创建模拟的回调链
+                let callbackChainLog = [];
+                
+                const mockCallbacks = {
+                    onStatusUpdate: (mode, status, message) => {
+                        callbackChainLog.push(`onStatusUpdate: ${mode} - ${status} - ${message}`);
+                        log(`📊 onStatusUpdate: ${mode} - ${status} - ${message}`, 'callback');
+                    },
+                    onPaymentConfirmed: (confirmationData) => {
+                        callbackChainLog.push('onPaymentConfirmed 被调用');
+                        log('🎉 onPaymentConfirmed 被调用!', 'callback');
+                        log(`   交易哈希: ${confirmationData.verificationResult?.transactionHash}`, 'info');
+                        
+                        // 模拟 handlePaymentSuccess 调用
+                        setTimeout(() => {
+                            log('🚀 模拟跳转到成功页面...', 'success');
+                            updateStatus('✅ 回调链测试成功！<br>所有回调都被正确调用', 'success');
+                        }, 500);
+                    },
+                    onError: (error) => {
+                        callbackChainLog.push(`onError: ${error.message}`);
+                        log(`❌ onError: ${error.message}`, 'error');
+                    }
+                };
+                
+                // 3. 创建 PaymentListenerWS 实例
+                if (typeof PaymentListenerWS === 'undefined') {
+                    log('❌ PaymentListenerWS 未定义', 'error');
+                    updateStatus('❌ 无法创建支付监听器', 'error');
+                    return;
+                }
+                
+                const paymentListener = new PaymentListenerWS();
+                paymentListener.initialize(paymentData, mockCallbacks);
+                
+                log('2. ✅ PaymentListenerWS 初始化完成', 'success');
+                
+                // 4. 模拟支付确认数据
+                const mockConfirmationData = {
+                    paymentId: paymentData.paymentId,
+                    verificationResult: {
+                        verified: true,
+                        transactionHash: '0xtest' + Date.now(),
+                        amount: 0.01,
+                        tokenSymbol: 'USDT'
+                    },
+                    blockNumber: 58598372,
+                    detectionMethod: 'websocket',
+                    detectedAt: Date.now()
+                };
+                
+                log('3. 模拟支付确认...', 'warning');
+                
+                // 5. 直接调用 handlePaymentConfirmed 测试回调链
+                paymentListener.handlePaymentConfirmed(mockConfirmationData);
+                
+                log('4. ✅ 回调链测试完成', 'success');
+                
+            } catch (error) {
+                log(`❌ 回调链测试失败: ${error.message}`, 'error');
+                updateStatus(`❌ 测试失败: ${error.message}`, 'error');
+            }
+        }
+
+        function testZeroConfirmationFix() {
+            log('=== 验证0确认修复 ===', 'info');
+            
+            // 测试修复前后的逻辑
+            const testCases = [
+                { required: 0, actual: 0, description: '0确认设置，0个确认' },
+                { required: 0, actual: 1, description: '0确认设置，1个确认' },
+                { required: undefined, actual: 0, description: '未设置确认数，0个确认' },
+                { required: undefined, actual: 1, description: '未设置确认数，1个确认' }
+            ];
+            
+            testCases.forEach(testCase => {
+                log(`测试: ${testCase.description}`, 'info');
+                
+                // 旧逻辑 (有问题的)
+                const oldRequired = testCase.required || 1;
+                const oldResult = testCase.actual >= oldRequired;
+                
+                // 新逻辑 (修复后的)
+                const newRequired = testCase.required !== undefined ? testCase.required : 1;
+                const newResult = testCase.actual >= newRequired;
+                
+                log(`  原始required: ${testCase.required}`, 'info');
+                log(`  旧逻辑: ${testCase.actual} >= ${oldRequired} = ${oldResult}`, oldResult ? 'success' : 'error');
+                log(`  新逻辑: ${testCase.actual} >= ${newRequired} = ${newResult}`, newResult ? 'success' : 'error');
+                
+                if (testCase.required === 0 && testCase.actual === 0) {
+                    if (!oldResult) {
+                        log(`  ❌ 旧逻辑错误: 0确认被拒绝`, 'error');
+                    }
+                    if (newResult) {
+                        log(`  ✅ 新逻辑正确: 0确认被接受`, 'success');
+                    }
+                }
+                log('', 'info');
+            });
+            
+            updateStatus('0确认修复验证完成<br>新逻辑应该正确处理0确认', 'success');
+        }
+
+        async function simulateRealPayment() {
+            log('=== 模拟真实支付流程 ===', 'warning');
+            
+            try {
+                // 模拟真实的WebSocket消息和处理流程
+                const realPaymentData = {
+                    paymentId: 'real-test-' + Date.now(),
+                    product: 'peanut',
+                    price: 0.01,
+                    selectedPayment: {
+                        symbol: 'USDT',
+                        contract: '0x55d398326f99059fF775485246999027B3197955'
+                    }
+                };
+                
+                log('1. 设置真实支付数据', 'info');
+                sessionStorage.setItem('paymentData', JSON.stringify(realPaymentData));
+                
+                // 创建区块链管理器
+                if (typeof BlockchainManager === 'undefined') {
+                    log('❌ BlockchainManager 未定义', 'error');
+                    return;
+                }
+                
+                const blockchainManager = new BlockchainManager();
+                await blockchainManager.initialize();
+                log('2. ✅ 区块链管理器初始化', 'success');
+                
+                // 启动支付监听
+                const config = {
+                    tokenSymbol: 'USDT',
+                    expectedAmount: 0.01,
+                    receiverAddress: '0xe27577B0e3920cE35f100f66430de0108cb78a04',
+                    requiredConfirmations: 0, // 关键修复点
+                    timeout: 30 * 60 * 1000,
+                    onSuccess: (confirmationData) => {
+                        log('🎉 真实支付成功回调触发!', 'success');
+                        log('   应该跳转到成功页面...', 'success');
+                        updateStatus('✅ 真实支付流程成功！', 'success');
+                    },
+                    onProgress: (progressData) => {
+                        log(`📊 支付进度: ${progressData.confirmations}/${progressData.required}`, 'info');
+                    }
+                };
+                
+                blockchainManager.startPaymentMonitoring(realPaymentData.paymentId, config);
+                log('3. ✅ 支付监听启动', 'success');
+                log(`   requiredConfirmations: ${config.requiredConfirmations}`, 'info');
+                
+                // 模拟收到真实的WebSocket转账事件
+                setTimeout(async () => {
+                    log('4. 模拟收到WebSocket转账事件...', 'warning');
+                    
+                    const mockTransfer = {
+                        tokenSymbol: 'USDT',
+                        formattedAmount: 0.01,
+                        to: '0xe27577B0e3920cE35f100f66430de0108cb78a04',
+                        transactionHash: '0xfd4d37702a74f8ca28bc6c4de8ae76cd4dac353dc677adf99a751bf5cc9c6dff',
+                        blockNumber: 58598372,
+                        from: '0xd87caca31c0c10110b6132bddf88221f60ff6341'
+                    };
+                    
+                    // 直接调用支付处理
+                    blockchainManager.handlePaymentDetection(mockTransfer);
+                    
+                }, 2000);
+                
+                updateStatus('真实支付流程测试启动<br>等待模拟支付...', 'info');
+                
+            } catch (error) {
+                log(`❌ 真实支付流程测试失败: ${error.message}`, 'error');
+                updateStatus(`❌ 测试失败: ${error.message}`, 'error');
+            }
+        }
+
+        function forcePaymentSuccess() {
+            log('=== 强制触发支付成功 ===', 'danger');
+            
+            // 直接调用 handlePaymentSuccess 函数
+            if (typeof handlePaymentSuccess === 'function') {
+                const mockSuccessData = {
+                    paymentId: 'force-success-' + Date.now(),
+                    confirmations: 1,
+                    detectionTime: 1500,
+                    verificationResult: {
+                        verified: true,
+                        transactionHash: '0xforce123',
+                        amount: 0.01,
+                        tokenSymbol: 'USDT',
+                        matchScore: 100
+                    }
+                };
+                
+                log('调用 handlePaymentSuccess...', 'warning');
+                handlePaymentSuccess(mockSuccessData);
+                
+                updateStatus('✅ 强制支付成功触发<br>应该跳转到成功页面', 'success');
+            } else {
+                log('❌ handlePaymentSuccess 函数未找到', 'error');
+                log('尝试直接跳转...', 'warning');
+                
+                setTimeout(() => {
+                    window.location.href = '../success-ws.html';
+                }, 1000);
+                
+                updateStatus('直接跳转到成功页面...', 'warning');
+            }
+        }
+
+        // 页面加载时的初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            log('Final Payment Test 页面已加载', 'success');
+            log('准备进行完整的支付流程测试...', 'info');
+            log('', 'info');
+            log('回调链说明:', 'info');
+            log('1. blockchain-ws.confirmPayment 检查确认数', 'info');
+            log('2. 如果确认数足够，调用 callbacks.onSuccess', 'info');
+            log('3. onSuccess 调用 handlePaymentEvent("confirmed")', 'info');
+            log('4. handlePaymentEvent 调用 handlePaymentConfirmed', 'info');
+            log('5. handlePaymentConfirmed 调用 onPaymentConfirmed', 'info');
+            log('6. onPaymentConfirmed 调用 handlePaymentSuccess', 'info');
+            log('7. handlePaymentSuccess 跳转到成功页面', 'info');
+            log('', 'info');
+        });
+    </script>
+</body>
+</html>

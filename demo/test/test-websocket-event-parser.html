@@ -1,0 +1,1013 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebSocket 事件解析器</title>
+    <style>
+        body {
+            font-family: 'Courier New', monospace;
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            background-color: #f9f9f9;
+        }
+        .raw-data {
+            background: #1e1e1e;
+            color: #00ff00;
+            padding: 15px;
+            border-radius: 5px;
+            font-size: 12px;
+            overflow-x: auto;
+            white-space: pre-wrap;
+        }
+        .parsed-data {
+            background: #e8f4fd;
+            padding: 15px;
+            border-radius: 5px;
+            border-left: 4px solid #007bff;
+        }
+        .highlight {
+            background-color: #ffeb3b;
+            padding: 2px 4px;
+            border-radius: 3px;
+        }
+        .success {
+            color: #28a745;
+            font-weight: bold;
+        }
+        .info {
+            color: #17a2b8;
+            font-weight: bold;
+        }
+        .warning {
+            color: #ffc107;
+            font-weight: bold;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 10px 0;
+            table-layout: fixed;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+            vertical-align: top;
+        }
+        th {
+            background-color: #f2f2f2;
+            font-weight: bold;
+        }
+        th:nth-child(1) { width: 12%; } /* 字段列 */
+        th:nth-child(2) { width: 22%; } /* 原始值列 */
+        th:nth-child(3) { width: 33%; } /* 解析结果列 */
+        th:nth-child(4) { width: 33%; } /* 说明列 */
+        
+        /* 解析结果列样式 */
+        td:nth-child(3) {
+            word-wrap: break-word;
+            word-break: break-all;
+            overflow-wrap: break-word;
+            hyphens: auto;
+        }
+        
+        /* 说明列样式 */
+        td:nth-child(4) {
+            word-wrap: break-word;
+            word-break: break-word;
+            overflow-wrap: break-word;
+            hyphens: auto;
+            font-size: 12px;
+            line-height: 1.4;
+        }
+        .raw-value-container {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            max-width: 100%;
+            min-width: 0;
+        }
+        .raw-value {
+            font-family: monospace;
+            font-size: 11px;
+            background-color: #f8f9fa;
+            padding: 4px 8px;
+            border-radius: 4px;
+            border: 1px solid #e9ecef;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            flex: 1;
+            min-width: 0;
+        }
+        .raw-value.short {
+            word-break: break-all;
+        }
+        .raw-value.truncated {
+            overflow: hidden;
+        }
+        .raw-value:hover {
+            background-color: #e9ecef;
+            border-color: #007bff;
+        }
+        .raw-value.expanded .truncated-text {
+            display: none;
+        }
+        .raw-value.expanded .full-text {
+            display: inline !important;
+            word-break: break-all;
+            white-space: pre-wrap;
+        }
+        .expand-btn {
+            font-size: 10px;
+            color: #007bff;
+            cursor: pointer;
+            padding: 2px 6px;
+            border-radius: 3px;
+            background: #e7f3ff;
+            border: 1px solid #b3d9ff;
+            transition: all 0.2s ease;
+            white-space: nowrap;
+        }
+        .expand-btn:hover {
+            color: #0056b3;
+            background: #cce7ff;
+        }
+        .copy-btn {
+            font-size: 12px;
+            cursor: pointer;
+            padding: 2px 4px;
+            border-radius: 3px;
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            transition: all 0.2s ease;
+        }
+        .copy-btn:hover {
+            background: #e9ecef;
+            transform: scale(1.1);
+        }
+        .copy-hint {
+            font-size: 10px;
+            color: #6c757d;
+            opacity: 0.7;
+        }
+        .btn {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        .btn:hover {
+            background: #0056b3;
+        }
+        .btn.success {
+            background: #28a745;
+        }
+        .btn.success:hover {
+            background: #218838;
+        }
+        .btn.warning {
+            background: #ffc107;
+            color: #212529;
+        }
+        .btn.warning:hover {
+            background: #e0a800;
+        }
+        .btn.danger {
+            background: #dc3545;
+        }
+        .btn.danger:hover {
+            background: #c82333;
+        }
+        .input-group {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        .status-badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+        .status-success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .status-error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .status-info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        .tooltip {
+            position: relative;
+            cursor: help;
+        }
+        .tooltip:hover::after {
+            content: attr(data-tooltip);
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #333;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-size: 12px;
+            white-space: nowrap;
+            z-index: 1000;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 WebSocket 事件解析器</h1>
+        
+        <div class="section">
+            <h3>📥 输入 WebSocket 事件数据</h3>
+            <div style="margin-bottom: 15px;">
+                <label for="eventInput" style="display: block; margin-bottom: 5px; font-weight: bold;">
+                    粘贴 WebSocket 消息 (JSON 格式):
+                </label>
+                <textarea 
+                    id="eventInput" 
+                    placeholder='粘贴完整的 WebSocket 消息，例如：
+{"jsonrpc":"2.0","method":"eth_subscription","params":{"result":{"address":"0x55d398326f99059ff775485246999027b3197955","blockHash":"0x...","blockNumber":"0x...","data":"0x...","topics":["0x...","0x...","0x..."],"transactionHash":"0x..."}}}
+
+💡 提示: 
+- 支持完整的 eth_subscription 事件消息
+- 自动识别 Transfer 事件并解析金额
+- 按 Ctrl+Enter 快速解析' 
+                    style="width: 100%; height: 150px; font-family: monospace; font-size: 12px; padding: 10px; border: 1px solid #ddd; border-radius: 5px; resize: vertical;"
+                ></textarea>
+                <div class="input-group" style="margin-top: 10px;">
+                    <button class="btn success" onclick="parseInputEvent()" data-tooltip="Ctrl+Enter 快捷键">🔍 解析输入的事件</button>
+                    <button class="btn" onclick="loadSampleEvent()">📋 加载示例数据</button>
+                    <button class="btn warning" onclick="clearInput()">🗑️ 清空输入</button>
+                    <button class="btn" onclick="validateEventFormat()">✅ 验证格式</button>
+                </div>
+            </div>
+            
+            <h4>📄 当前解析的数据:</h4>
+            <div class="raw-data" id="rawData">
+                点击"加载示例数据"或输入 WebSocket 消息后点击"解析输入的事件"
+            </div>
+        </div>
+
+        <div class="section">
+            <h3>🧩 事件结构解析</h3>
+            <div class="parsed-data">
+                <table>
+                    <tr>
+                        <th>字段</th>
+                        <th>原始值</th>
+                        <th>解析结果</th>
+                        <th>说明</th>
+                    </tr>
+                    <tbody id="parseTable">
+                        <!-- 解析结果将在这里显示 -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="section">
+            <h3>💰 金额计算过程</h3>
+            <div id="amountCalculation">
+                <!-- 金额计算步骤将在这里显示 -->
+            </div>
+        </div>
+
+        <div class="section">
+            <h3>✅ 验证结果</h3>
+            <div id="validationResult">
+                <!-- 验证结果将在这里显示 -->
+            </div>
+        </div>
+
+        <div class="section">
+            <h3>🧪 测试工具</h3>
+            <div class="input-group">
+                <button class="btn" onclick="parseCurrentEvent()">🔍 重新解析当前数据</button>
+                <button class="btn success" onclick="testWithCustomData()">🧪 测试 1 USDT 转账</button>
+                <button class="btn" onclick="testWithDifferentAmounts()">💰 测试不同金额</button>
+                <button class="btn" onclick="showCalculationSteps()">📚 显示计算步骤</button>
+            </div>
+        </div>
+
+        <div class="section">
+            <h3>📊 解析统计</h3>
+            <div id="parseStats" style="background: #f8f9fa; padding: 15px; border-radius: 5px;">
+                <p>解析次数: <span id="parseCount">0</span></p>
+                <p>成功解析: <span id="successCount">0</span></p>
+                <p>解析错误: <span id="errorCount">0</span></p>
+                <p>最后解析时间: <span id="lastParseTime">未解析</span></p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 解析统计
+        let parseStats = {
+            parseCount: 0,
+            successCount: 0,
+            errorCount: 0,
+            lastParseTime: null
+        };
+
+        // 当前事件数据
+        let currentEventData = null;
+
+        // 示例事件数据
+        const sampleEventData = {
+            "jsonrpc": "2.0",
+            "method": "eth_subscription",
+            "params": {
+                "result": {
+                    "address": "0x55d398326f99059ff775485246999027b3197955",
+                    "blockHash": "0x1a9b609ef8387e42da82a3ab14af54e9d6130b639051f395a04267a222017430",
+                    "blockNumber": "0x37de737",
+                    "data": "0x000000000000000000000000000000000000000000000000002386f26fc10000",
+                    "logIndex": "0x2c",
+                    "removed": false,
+                    "topics": [
+                        "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
+                        "0x000000000000000000000000d87caca31c0c10110b6132bddf88221f60ff6341",
+                        "0x000000000000000000000000e27577b0e3920ce35f100f66430de0108cb78a04"
+                    ],
+                    "transactionHash": "0xb13914079964c6bbbc84ddc2522cf14b0c33c199d78af46c92bbe7c98df12118",
+                    "transactionIndex": "0xb"
+                },
+                "subscription": "0xde291796e7713e8c30083ad3652d496a"
+            }
+        };
+
+        // Transfer 事件签名
+        const TRANSFER_SIGNATURE = "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef";
+        
+        // 目标收款地址
+        const TARGET_ADDRESS = "0xe27577b0e3920ce35f100f66430de0108cb78a04";
+
+        // 代币配置
+        const TOKENS = {
+            "0x55d398326f99059ff775485246999027b3197955": {
+                symbol: "USDT",
+                name: "Tether USD",
+                decimals: 18
+            }
+        };
+
+        // 格式化原始值显示（支持省略和展开）
+        function formatRawValue(value, maxLength = 40) {
+            if (!value || value.length <= maxLength) {
+                return `
+                    <div class="raw-value-container">
+                        <span class="raw-value short" onclick="copyToClipboard('${value}')" title="点击复制">${value}</span>
+                        <span class="copy-hint">📋</span>
+                    </div>
+                `;
+            }
+            
+            const id = 'raw_' + Math.random().toString(36).substr(2, 9);
+            const startLength = 12;
+            const endLength = 12;
+            const truncated = value.substring(0, startLength) + '...' + value.substring(value.length - endLength);
+            
+            return `
+                <div class="raw-value-container" id="${id}">
+                    <span class="raw-value truncated" onclick="toggleRawValue('${id}')" title="点击展开/收起">
+                        <span class="truncated-text">${truncated}</span>
+                        <span class="full-text" style="display: none;">${value}</span>
+                    </span>
+                    <span class="expand-btn" onclick="toggleRawValue('${id}')">[展开]</span>
+                    <span class="copy-btn" onclick="copyToClipboard('${value}')" title="复制完整值">📋</span>
+                </div>
+            `;
+        }
+
+        // 切换原始值的显示状态
+        function toggleRawValue(id) {
+            const container = document.getElementById(id);
+            if (!container) return;
+            
+            const rawValue = container.querySelector('.raw-value');
+            const expandBtn = container.querySelector('.expand-btn');
+            
+            if (rawValue.classList.contains('truncated')) {
+                // 展开
+                rawValue.classList.remove('truncated');
+                rawValue.classList.add('expanded');
+                expandBtn.textContent = '[收起]';
+            } else {
+                // 收起
+                rawValue.classList.remove('expanded');
+                rawValue.classList.add('truncated');
+                expandBtn.textContent = '[展开]';
+            }
+        }
+
+        // 复制到剪贴板
+        function copyToClipboard(text) {
+            if (navigator.clipboard && window.isSecureContext) {
+                // 使用现代 Clipboard API
+                navigator.clipboard.writeText(text).then(() => {
+                    showCopySuccess();
+                }).catch(err => {
+                    console.error('复制失败:', err);
+                    fallbackCopyTextToClipboard(text);
+                });
+            } else {
+                // 降级方案
+                fallbackCopyTextToClipboard(text);
+            }
+        }
+
+        // 降级复制方案
+        function fallbackCopyTextToClipboard(text) {
+            const textArea = document.createElement("textarea");
+            textArea.value = text;
+            textArea.style.top = "0";
+            textArea.style.left = "0";
+            textArea.style.position = "fixed";
+            textArea.style.opacity = "0";
+            
+            document.body.appendChild(textArea);
+            textArea.focus();
+            textArea.select();
+            
+            try {
+                const successful = document.execCommand('copy');
+                if (successful) {
+                    showCopySuccess();
+                } else {
+                    console.error('复制命令失败');
+                }
+            } catch (err) {
+                console.error('复制失败:', err);
+            }
+            
+            document.body.removeChild(textArea);
+        }
+
+        // 显示复制成功提示
+        function showCopySuccess() {
+            // 创建临时提示元素
+            const toast = document.createElement('div');
+            toast.textContent = '✅ 已复制到剪贴板';
+            toast.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                background: #28a745;
+                color: white;
+                padding: 10px 15px;
+                border-radius: 5px;
+                font-size: 14px;
+                z-index: 10000;
+                box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+                animation: slideIn 0.3s ease;
+            `;
+            
+            // 添加动画样式
+            if (!document.getElementById('toast-style')) {
+                const style = document.createElement('style');
+                style.id = 'toast-style';
+                style.textContent = `
+                    @keyframes slideIn {
+                        from { transform: translateX(100%); opacity: 0; }
+                        to { transform: translateX(0); opacity: 1; }
+                    }
+                    @keyframes slideOut {
+                        from { transform: translateX(0); opacity: 1; }
+                        to { transform: translateX(100%); opacity: 0; }
+                    }
+                `;
+                document.head.appendChild(style);
+            }
+            
+            document.body.appendChild(toast);
+            
+            // 2秒后移除提示
+            setTimeout(() => {
+                toast.style.animation = 'slideOut 0.3s ease';
+                setTimeout(() => {
+                    if (toast.parentNode) {
+                        toast.parentNode.removeChild(toast);
+                    }
+                }, 300);
+            }, 2000);
+        }
+
+        // 更新解析统计
+        function updateParseStats(success = true) {
+            parseStats.parseCount++;
+            if (success) {
+                parseStats.successCount++;
+            } else {
+                parseStats.errorCount++;
+            }
+            parseStats.lastParseTime = new Date().toLocaleString();
+            
+            document.getElementById('parseCount').textContent = parseStats.parseCount;
+            document.getElementById('successCount').textContent = parseStats.successCount;
+            document.getElementById('errorCount').textContent = parseStats.errorCount;
+            document.getElementById('lastParseTime').textContent = parseStats.lastParseTime;
+        }
+
+        // 解析输入的事件
+        function parseInputEvent() {
+            const input = document.getElementById('eventInput').value.trim();
+            
+            if (!input) {
+                alert('请先输入 WebSocket 事件数据！');
+                return;
+            }
+            
+            try {
+                // 尝试解析 JSON
+                const eventData = JSON.parse(input);
+                
+                // 验证数据格式
+                if (!validateEventStructure(eventData)) {
+                    throw new Error('数据格式不正确，请确保是完整的 WebSocket 事件消息');
+                }
+                
+                currentEventData = eventData;
+                console.log('📥 解析输入的事件数据:', eventData);
+                
+                // 显示原始数据
+                displayRawData(eventData);
+                
+                // 解析并显示结果
+                parseCurrentEvent();
+                
+                updateParseStats(true);
+                
+            } catch (error) {
+                console.error('❌ 解析错误:', error);
+                alert(`解析失败: ${error.message}\n\n请检查输入的 JSON 格式是否正确。`);
+                updateParseStats(false);
+            }
+        }
+
+        // 验证事件数据结构
+        function validateEventStructure(eventData) {
+            try {
+                // 检查基本结构
+                if (!eventData.method || eventData.method !== 'eth_subscription') {
+                    return false;
+                }
+                
+                if (!eventData.params || !eventData.params.result) {
+                    return false;
+                }
+                
+                const result = eventData.params.result;
+                
+                // 检查必要字段
+                const requiredFields = ['address', 'topics', 'data', 'transactionHash', 'blockNumber'];
+                for (const field of requiredFields) {
+                    if (!result[field]) {
+                        return false;
+                    }
+                }
+                
+                // 检查 topics 数组
+                if (!Array.isArray(result.topics) || result.topics.length < 3) {
+                    return false;
+                }
+                
+                return true;
+            } catch (error) {
+                return false;
+            }
+        }
+
+        // 加载示例事件
+        function loadSampleEvent() {
+            const sampleJson = JSON.stringify(sampleEventData, null, 2);
+            document.getElementById('eventInput').value = sampleJson;
+            
+            console.log('📋 加载示例数据');
+            parseInputEvent();
+        }
+
+        // 清空输入
+        function clearInput() {
+            document.getElementById('eventInput').value = '';
+            document.getElementById('rawData').textContent = '输入已清空，请粘贴新的 WebSocket 消息';
+            
+            // 清空解析结果
+            document.getElementById('parseTable').innerHTML = '<tr><td colspan="4" style="text-align: center; color: #666;">请输入事件数据并解析</td></tr>';
+            document.getElementById('amountCalculation').innerHTML = '<p style="color: #666;">请先解析事件数据</p>';
+            document.getElementById('validationResult').innerHTML = '<p style="color: #666;">请先解析事件数据</p>';
+            
+            currentEventData = null;
+            console.log('🗑️ 输入已清空');
+        }
+
+        // 验证事件格式
+        function validateEventFormat() {
+            const input = document.getElementById('eventInput').value.trim();
+            
+            if (!input) {
+                alert('请先输入事件数据！');
+                return;
+            }
+            
+            try {
+                const eventData = JSON.parse(input);
+                const isValid = validateEventStructure(eventData);
+                
+                if (isValid) {
+                    alert('✅ 事件格式验证通过！\n\n这是一个有效的 WebSocket Transfer 事件。');
+                } else {
+                    alert('❌ 事件格式验证失败！\n\n请检查是否为完整的 eth_subscription 事件消息。');
+                }
+            } catch (error) {
+                alert(`❌ JSON 格式错误！\n\n${error.message}`);
+            }
+        }
+
+        // 测试不同金额
+        function testWithDifferentAmounts() {
+            const amounts = [
+                { hex: "0x0de0b6b3a7640000", decimal: "1.0", desc: "1 USDT" },
+                { hex: "0x01bc16d674ec80000", decimal: "0.5", desc: "0.5 USDT" },
+                { hex: "0x00038d7ea4c68000", decimal: "0.001", desc: "0.001 USDT" },
+                { hex: "0x152d02c7e14af6800000", decimal: "100.0", desc: "100 USDT" }
+            ];
+            
+            let testResults = "🧪 不同金额测试结果:\n\n";
+            
+            amounts.forEach(amount => {
+                const testData = {
+                    ...sampleEventData,
+                    params: {
+                        ...sampleEventData.params,
+                        result: {
+                            ...sampleEventData.params.result,
+                            data: amount.hex
+                        }
+                    }
+                };
+                
+                const parsed = parseTransferEvent(testData);
+                testResults += `${amount.desc}: ${parsed.amount} ${parsed.tokenSymbol}\n`;
+            });
+            
+            alert(testResults);
+        }
+
+        // 解析事件数据
+        function parseTransferEvent(eventData) {
+            const result = eventData.params.result;
+            
+            // 基本信息
+            const contractAddress = result.address.toLowerCase();
+            const blockNumber = parseInt(result.blockNumber, 16);
+            const transactionHash = result.transactionHash;
+            const topics = result.topics;
+            const data = result.data;
+
+            // 解析 Transfer 事件
+            const eventSignature = topics[0];
+            const fromAddressRaw = topics[1];
+            const toAddressRaw = topics[2];
+
+            // 提取地址 (去掉前面的0填充)
+            const fromAddress = "0x" + fromAddressRaw.slice(26);
+            const toAddress = "0x" + toAddressRaw.slice(26);
+
+            // 解析金额
+            const amountWei = BigInt(data);
+            const token = TOKENS[contractAddress];
+            const decimals = token ? token.decimals : 18;
+            const amount = Number(amountWei) / Math.pow(10, decimals);
+
+            return {
+                // 基本信息
+                contractAddress,
+                tokenSymbol: token ? token.symbol : "UNKNOWN",
+                tokenName: token ? token.name : "Unknown Token",
+                blockNumber,
+                transactionHash,
+                
+                // Transfer 详情
+                eventSignature,
+                fromAddress,
+                toAddress,
+                amountWei: amountWei.toString(),
+                amount,
+                decimals,
+                
+                // 验证
+                isTransferEvent: eventSignature === TRANSFER_SIGNATURE,
+                isToTargetAddress: toAddress.toLowerCase() === TARGET_ADDRESS.toLowerCase(),
+                
+                // 原始数据
+                rawTopics: topics,
+                rawData: data
+            };
+        }
+
+        // 显示原始数据
+        function displayRawData(eventData = null) {
+            const rawDataElement = document.getElementById('rawData');
+            const dataToShow = eventData || currentEventData || sampleEventData;
+            rawDataElement.textContent = JSON.stringify(dataToShow, null, 2);
+        }
+
+        // 显示解析结果
+        function displayParseResults(parsed) {
+            const tableBody = document.getElementById('parseTable');
+            
+            const rows = [
+                {
+                    field: "合约地址",
+                    raw: parsed.contractAddress,
+                    parsed: `${parsed.tokenSymbol} (${parsed.tokenName})`,
+                    description: "代币合约地址"
+                },
+                {
+                    field: "事件签名",
+                    raw: parsed.eventSignature,
+                    parsed: parsed.isTransferEvent ? "✅ Transfer 事件" : "❌ 非 Transfer 事件",
+                    description: "keccak256('Transfer(address,address,uint256)')"
+                },
+                {
+                    field: "区块号",
+                    raw: (currentEventData || sampleEventData).params.result.blockNumber,
+                    parsed: `${parsed.blockNumber}`,
+                    description: "交易所在区块"
+                },
+                {
+                    field: "发送地址 (From)",
+                    raw: parsed.rawTopics[1],
+                    parsed: parsed.fromAddress,
+                    description: "topics[1] 去掉前12字节填充"
+                },
+                {
+                    field: "接收地址 (To)",
+                    raw: parsed.rawTopics[2],
+                    parsed: `${parsed.toAddress} ${parsed.isToTargetAddress ? '✅' : '❌'}`,
+                    description: "topics[2] 去掉前12字节填充"
+                },
+                {
+                    field: "转账金额",
+                    raw: parsed.rawData,
+                    parsed: `${parsed.amount} ${parsed.tokenSymbol}`,
+                    description: `data 字段转换 (${parsed.decimals} 位小数)`
+                }
+            ];
+
+            tableBody.innerHTML = rows.map(row => `
+                <tr>
+                    <td><strong>${row.field}</strong></td>
+                    <td>${formatRawValue(row.raw)}</td>
+                    <td><span class="${row.parsed.includes('✅') ? 'success' : row.parsed.includes('❌') ? 'warning' : 'info'}">${row.parsed}</span></td>
+                    <td>${row.description}</td>
+                </tr>
+            `).join('');
+        }
+
+        // 显示金额计算过程
+        function displayAmountCalculation(parsed) {
+            const calculationElement = document.getElementById('amountCalculation');
+            
+            calculationElement.innerHTML = `
+                <h4>💻 逐步计算过程：</h4>
+                <div style="background: #f8f9fa; padding: 15px; border-radius: 5px; font-family: monospace;">
+                    <p><strong>1. 原始十六进制数据：</strong></p>
+                    <code>${parsed.rawData}</code>
+                    
+                    <p><strong>2. 转换为 BigInt：</strong></p>
+                    <code>BigInt("${parsed.rawData}") = ${parsed.amountWei}n</code>
+                    
+                    <p><strong>3. 转换为十进制数字：</strong></p>
+                    <code>Number(${parsed.amountWei}n) = ${Number(parsed.amountWei)}</code>
+                    
+                    <p><strong>4. 应用代币小数位数：</strong></p>
+                    <code>${Number(parsed.amountWei)} ÷ 10^${parsed.decimals} = ${parsed.amount}</code>
+                    
+                    <p><strong>5. 最终结果：</strong></p>
+                    <code class="success">${parsed.amount} ${parsed.tokenSymbol}</code>
+                </div>
+                
+                <h4>🔢 十六进制转换验证：</h4>
+                <div style="background: #e8f4fd; padding: 15px; border-radius: 5px;">
+                    <p>十六进制: <code>0x2386f26fc10000</code></p>
+                    <p>二进制: <code>${parseInt('2386f26fc10000', 16).toString(2)}</code></p>
+                    <p>十进制: <code>${parseInt('2386f26fc10000', 16)}</code></p>
+                    <p>科学计数法: <code>${parseInt('2386f26fc10000', 16).toExponential()}</code></p>
+                </div>
+            `;
+        }
+
+        // 显示验证结果
+        function displayValidationResult(parsed) {
+            const validationElement = document.getElementById('validationResult');
+            
+            const checks = [
+                {
+                    name: "是否为 Transfer 事件",
+                    result: parsed.isTransferEvent,
+                    details: `事件签名匹配: ${parsed.eventSignature === TRANSFER_SIGNATURE ? '✅' : '❌'}`
+                },
+                {
+                    name: "是否发送到目标地址",
+                    result: parsed.isToTargetAddress,
+                    details: `目标地址: ${TARGET_ADDRESS}`
+                },
+                {
+                    name: "代币类型识别",
+                    result: parsed.tokenSymbol !== "UNKNOWN",
+                    details: `识别为: ${parsed.tokenSymbol} (${parsed.tokenName})`
+                },
+                {
+                    name: "金额解析",
+                    result: parsed.amount > 0,
+                    details: `解析金额: ${parsed.amount} ${parsed.tokenSymbol}`
+                }
+            ];
+
+            const allPassed = checks.every(check => check.result);
+
+            validationElement.innerHTML = `
+                <div style="padding: 15px; border-radius: 5px; background: ${allPassed ? '#d4edda' : '#f8d7da'}; border: 1px solid ${allPassed ? '#c3e6cb' : '#f5c6cb'};">
+                    <h4 style="margin-top: 0; color: ${allPassed ? '#155724' : '#721c24'};">
+                        ${allPassed ? '🎉 验证通过！' : '⚠️ 验证失败！'}
+                    </h4>
+                    ${checks.map(check => `
+                        <p style="margin: 5px 0;">
+                            ${check.result ? '✅' : '❌'} <strong>${check.name}</strong>: ${check.details}
+                        </p>
+                    `).join('')}
+                </div>
+                
+                ${allPassed ? `
+                    <div style="margin-top: 15px; padding: 15px; background: #fff3cd; border: 1px solid #ffeaa7; border-radius: 5px;">
+                        <h4 style="margin-top: 0; color: #856404;">📊 交易摘要</h4>
+                        <p><strong>交易哈希:</strong> <code>${parsed.transactionHash}</code></p>
+                        <p><strong>区块号:</strong> ${parsed.blockNumber}</p>
+                        <p><strong>发送方:</strong> <code>${parsed.fromAddress}</code></p>
+                        <p><strong>接收方:</strong> <code>${parsed.toAddress}</code></p>
+                        <p><strong>金额:</strong> <span class="success">${parsed.amount} ${parsed.tokenSymbol}</span></p>
+                        <p><strong>代币合约:</strong> <code>${parsed.contractAddress}</code></p>
+                    </div>
+                ` : ''}
+            `;
+        }
+
+        // 解析当前事件
+        function parseCurrentEvent() {
+            const eventData = currentEventData || sampleEventData;
+            
+            if (!eventData) {
+                alert('没有可解析的事件数据！请先输入或加载示例数据。');
+                return;
+            }
+            
+            console.log('🔍 开始解析事件数据...');
+            
+            try {
+                const parsed = parseTransferEvent(eventData);
+                console.log('📊 解析结果:', parsed);
+                
+                displayParseResults(parsed);
+                displayAmountCalculation(parsed);
+                displayValidationResult(parsed);
+                
+                updateParseStats(true);
+            } catch (error) {
+                console.error('❌ 解析错误:', error);
+                alert(`解析失败: ${error.message}`);
+                updateParseStats(false);
+            }
+        }
+
+        // 测试自定义数据 (1 USDT)
+        function testWithCustomData() {
+            // 创建一个测试用的事件数据 (1 USDT)
+            const testData = {
+                ...sampleEventData,
+                params: {
+                    ...sampleEventData.params,
+                    result: {
+                        ...sampleEventData.params.result,
+                        data: "0x0000000000000000000000000000000000000000000000000de0b6b3a7640000", // 1 USDT
+                        transactionHash: "0x" + Math.random().toString(16).substr(2, 64) // 随机交易哈希
+                    }
+                }
+            };
+            
+            console.log('🧪 测试 1 USDT 转账数据');
+            
+            // 临时设置为当前数据并解析
+            const originalData = currentEventData;
+            currentEventData = testData;
+            
+            displayRawData(testData);
+            parseCurrentEvent();
+            
+            // 恢复原始数据
+            currentEventData = originalData;
+            
+            alert('🧪 已加载 1 USDT 测试数据，查看解析结果！');
+        }
+
+        // 显示计算步骤
+        function showCalculationSteps() {
+            const steps = `
+WebSocket 事件解析步骤：
+
+1. 识别事件类型
+   - 检查 topics[0] 是否为 Transfer 事件签名
+   - Transfer 签名: 0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef
+
+2. 解析地址信息
+   - topics[1]: from 地址 (32字节，前12字节为0填充)
+   - topics[2]: to 地址 (32字节，前12字节为0填充)
+   - 提取方法: "0x" + topic.slice(26)
+
+3. 解析转账金额
+   - data 字段包含 uint256 金额 (32字节)
+   - 转换为 BigInt: BigInt(data)
+   - 应用小数位数: amount / 10^decimals
+
+4. 验证目标地址
+   - 检查 to 地址是否匹配收款地址
+   - 大小写不敏感比较
+
+5. 识别代币类型
+   - 根据合约地址查找代币信息
+   - 获取符号、名称、小数位数
+            `;
+            
+            alert(steps);
+        }
+
+        // 页面加载时初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('🚀 WebSocket 事件解析器已加载');
+            
+            // 初始化显示
+            document.getElementById('rawData').textContent = '请输入 WebSocket 事件数据或点击"加载示例数据"';
+            
+            // 初始化解析结果表格
+            document.getElementById('parseTable').innerHTML = '<tr><td colspan="4" style="text-align: center; color: #666;">请输入事件数据并解析</td></tr>';
+            document.getElementById('amountCalculation').innerHTML = '<p style="color: #666;">请先解析事件数据</p>';
+            document.getElementById('validationResult').innerHTML = '<p style="color: #666;">请先解析事件数据</p>';
+            
+            // 更新统计显示
+            updateParseStats(true);
+            parseStats.parseCount = 0; // 重置计数
+            updateParseStats(true);
+            parseStats.parseCount = 0;
+            parseStats.successCount = 0;
+            parseStats.errorCount = 0;
+            parseStats.lastParseTime = null;
+            
+            document.getElementById('parseCount').textContent = '0';
+            document.getElementById('successCount').textContent = '0';
+            document.getElementById('errorCount').textContent = '0';
+            document.getElementById('lastParseTime').textContent = '未解析';
+            
+            // 添加键盘快捷键
+            document.getElementById('eventInput').addEventListener('keydown', function(e) {
+                if (e.ctrlKey && e.key === 'Enter') {
+                    parseInputEvent();
+                }
+            });
+            
+            console.log('💡 提示: 粘贴 WebSocket 消息后按 Ctrl+Enter 快速解析');
+        });
+    </script>
+</body>
+</html>
