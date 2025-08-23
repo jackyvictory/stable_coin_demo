@@ -117,8 +117,8 @@ function proceedToPayment() {
     console.log('💾 Created WebSocket payment session:', paymentData);
     console.log('💰 Final price in payment data:', paymentData.price);
     
-    // 直接跳转到 WebSocket 版本的支付页面
-    window.location.href = 'payment-ws.html';
+    // 直接跳转到支付页面
+    window.location.href = 'payment.html';
 }
 
 // 生成支付 ID
