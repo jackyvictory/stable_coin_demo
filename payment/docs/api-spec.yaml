@@ -1,0 +1,287 @@
+openapi: 3.0.3
+info:
+  title: Stable Coin Payment API
+  description: API for handling cryptocurrency payments with stable coins on BNB Smart Chain
+  version: 1.0.0
+  contact:
+    name: API Support
+    email: support@example.com
+
+servers:
+  - url: http://localhost:8080
+    description: Development server
+  - url: https://api.example.com
+    description: Production server
+
+paths:
+  /api/v1/payments:
+    post:
+      summary: Create a new payment session
+      description: Creates a new payment session for a product purchase
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreatePaymentRequest'
+      responses:
+        '201':
+          description: Payment session created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaymentSessionResponse'
+        '400':
+          description: Invalid request data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/v1/payments/{paymentId}:
+    get:
+      summary: Get payment session status
+      description: Retrieve the current status of a payment session
+      parameters:
+        - name: paymentId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Unique identifier of the payment session
+      responses:
+        '200':
+          description: Payment session retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaymentSessionResponse'
+        '404':
+          description: Payment session not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/v1/tokens:
+    get:
+      summary: Get supported tokens
+      description: Retrieve a list of supported tokens
+      responses:
+        '200':
+          description: Tokens retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokensResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/v1/networks:
+    get:
+      summary: Get supported networks
+      description: Retrieve a list of supported networks
+      responses:
+        '200':
+          description: Networks retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NetworksResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+components:
+  schemas:
+    CreatePaymentRequest:
+      type: object
+      required:
+        - productId
+        - productName
+        - amount
+        - currency
+        - tokenSymbol
+        - networkId
+      properties:
+        productId:
+          type: string
+          example: "peanut"
+          description: Product identifier
+        productName:
+          type: string
+          example: "Peanuts"
+          description: Product name
+        amount:
+          type: number
+          format: float
+          example: 1.00
+          description: Payment amount
+        currency:
+          type: string
+          example: "USD"
+          description: Currency type
+        tokenSymbol:
+          type: string
+          example: "USDT"
+          description: Token symbol
+        networkId:
+          type: string
+          example: "BSC"
+          description: Network identifier
+
+    PaymentSessionResponse:
+      type: object
+      properties:
+        paymentId:
+          type: string
+          example: "pay_1234567890"
+          description: Unique payment identifier
+        productId:
+          type: string
+          example: "peanut"
+        productName:
+          type: string
+          example: "Peanuts"
+        amount:
+          type: number
+          format: float
+          example: 1.00
+        currency:
+          type: string
+          example: "USD"
+        tokenSymbol:
+          type: string
+          example: "USDT"
+        networkId:
+          type: string
+          example: "BSC"
+        receiverAddress:
+          type: string
+          example: "0xe27577B0e3920cE35f100f66430de0108cb78a04"
+        status:
+          type: string
+          enum: [created, pending, paid, expired, failed]
+          example: "created"
+        qrCodeData:
+          type: string
+          example: "0xe27577B0e3920cE35f100f66430de0108cb78a04?amount=1.00"
+        transactionHash:
+          type: string
+          example: "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef"
+        blockNumber:
+          type: integer
+          example: 12345678
+        confirmedAt:
+          type: string
+          format: date-time
+          example: "2023-12-31T23:35:15Z"
+        expiresAt:
+          type: string
+          format: date-time
+          example: "2023-12-31T23:59:59Z"
+        createdAt:
+          type: string
+          format: date-time
+          example: "2023-12-31T23:29:59Z"
+
+    TokensResponse:
+      type: object
+      properties:
+        tokens:
+          type: array
+          items:
+            $ref: '#/components/schemas/Token'
+
+    Token:
+      type: object
+      properties:
+        symbol:
+          type: string
+          example: "USDT"
+        name:
+          type: string
+          example: "Tether USD"
+        contractAddress:
+          type: string
+          example: "0x55d398326f99059fF775485246999027B3197955"
+        decimals:
+          type: integer
+          example: 18
+        networkId:
+          type: string
+          example: "BSC"
+        enabled:
+          type: boolean
+          example: true
+
+    NetworksResponse:
+      type: object
+      properties:
+        networks:
+          type: array
+          items:
+            $ref: '#/components/schemas/Network'
+
+    Network:
+      type: object
+      properties:
+        id:
+          type: string
+          example: "BSC"
+        name:
+          type: string
+          example: "BNB Smart Chain"
+        chainId:
+          type: integer
+          example: 56
+        rpcUrl:
+          type: string
+          example: "https://bsc-dataseed1.binance.org/"
+        websocketUrl:
+          type: string
+          example: "wss://bsc-ws-node.nariox.org"
+        blockExplorer:
+          type: string
+          example: "https://bscscan.com"
+        enabled:
+          type: boolean
+          example: true
+
+    Error:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 400
+        message:
+          type: string
+          example: "Invalid request data"
+        details:
+          type: string
+          example: "Missing required field: productId"
+
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key

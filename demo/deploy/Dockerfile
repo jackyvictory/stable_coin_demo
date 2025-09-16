@@ -15,19 +15,43 @@ RUN mkdir -p /var/log/nginx \
     /opt/evo-payment/logs \
     /var/www/certbot
 
-# 应用构建阶段
-FROM base AS app
+# 资源哈希处理阶段
+FROM base AS hash-resources
+
+# 安装Node.js用于处理资源哈希
+RUN apk add --no-cache nodejs npm
 
 # 设置工作目录
-WORKDIR /usr/share/nginx/html
+WORKDIR /app
 
-# 复制静态文件到 nginx 默认目录
+# 复制处理脚本和静态资源
+COPY deploy/generate-resource-hashes.js ./
 COPY index.html payment.html qrcode.html success.html ./
 COPY css/ ./css/
 COPY js/ ./js/
 COPY images/ ./images/
 COPY lib/ ./lib/
 COPY config.js ./
+
+# 生成资源哈希并重命名文件
+RUN node generate-resource-hashes.js .
+
+# 应用构建阶段
+FROM base AS app
+
+# 设置工作目录
+WORKDIR /usr/share/nginx/html
+
+# 从哈希处理阶段复制处理后的文件
+COPY --from=hash-resources /app/index.html ./
+COPY --from=hash-resources /app/payment.html ./
+COPY --from=hash-resources /app/qrcode.html ./
+COPY --from=hash-resources /app/success.html ./
+COPY --from=hash-resources /app/css/ ./css/
+COPY --from=hash-resources /app/js/ ./js/
+COPY --from=hash-resources /app/images/ ./images/
+COPY --from=hash-resources /app/lib/ ./lib/
+COPY --from=hash-resources /app/config.js ./
 
 # 复制配置文件到镜像中
 COPY deploy/nginx.conf /etc/nginx/nginx.conf

@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Payment Successful - Stable Coin Payment System</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f8f9fa;
+            color: #333;
+        }
+        .header {
+            background-color: #28a745;
+            color: white;
+            padding: 1rem;
+            text-align: center;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        .success-card {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            padding: 2rem;
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+        .success-icon {
+            font-size: 4rem;
+            color: #28a745;
+            margin-bottom: 1rem;
+        }
+        .product-info {
+            margin: 2rem 0;
+        }
+        .product-info h2 {
+            margin-bottom: 0.5rem;
+        }
+        .product-info .price {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #007bff;
+        }
+        .transaction-details {
+            background-color: #e9ecef;
+            padding: 1rem;
+            border-radius: 8px;
+            text-align: left;
+            margin: 2rem 0;
+        }
+        .detail-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 0.5rem 0;
+            border-bottom: 1px solid #ddd;
+        }
+        .detail-row:last-child {
+            border-bottom: none;
+        }
+        .address {
+            background-color: #f8f9fa;
+            padding: 1rem;
+            border-radius: 4px;
+            font-family: monospace;
+            word-break: break-all;
+            margin: 1rem 0;
+        }
+        .btn {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: background-color 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+        }
+        .btn:hover {
+            background-color: #0056b3;
+        }
+        .explorer-link {
+            color: #007bff;
+            text-decoration: none;
+            margin-top: 1rem;
+            display: inline-block;
+        }
+        .explorer-link:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Payment Successful</h1>
+        <p>Your transaction has been confirmed</p>
+    </div>
+    
+    <div class="container">
+        <div class="success-card">
+            <div class="success-icon">✓</div>
+            <h1>Thank You for Your Purchase!</h1>
+            <p>Your payment has been successfully processed.</p>
+            
+            <div class="product-info">
+                <h2 id="productName">Product Name</h2>
+                <div class="price" id="productPrice">$0.00</div>
+            </div>
+            
+            <div class="transaction-details">
+                <h3>Transaction Details</h3>
+                <div class="detail-row">
+                    <span><strong>Payment ID:</strong></span>
+                    <span id="paymentId">-</span>
+                </div>
+                <div class="detail-row">
+                    <span><strong>Transaction Hash:</strong></span>
+                    <span id="txHash">-</span>
+                </div>
+                <div class="detail-row">
+                    <span><strong>Token:</strong></span>
+                    <span id="tokenSymbol">-</span>
+                </div>
+                <div class="detail-row">
+                    <span><strong>Amount:</strong></span>
+                    <span id="amount">-</span>
+                </div>
+                <div class="detail-row">
+                    <span><strong>Sender:</strong></span>
+                    <span id="senderAddress">-</span>
+                </div>
+                <div class="detail-row">
+                    <span><strong>Block Number:</strong></span>
+                    <span id="blockNumber">-</span>
+                </div>
+                <div class="detail-row">
+                    <span><strong>Confirmed At:</strong></span>
+                    <span id="confirmedAt">-</span>
+                </div>
+            </div>
+            
+            <div class="address">
+                <p><strong>Receiver Address:</strong></p>
+                <p id="receiverAddress">0x...</p>
+            </div>
+            
+            <a href="index.html" class="btn">Continue Shopping</a>
+            
+            <a href="#" id="explorerLink" class="explorer-link" target="_blank">View on Block Explorer</a>
+        </div>
+    </div>
+
+    <script>
+        // Get URL parameters
+        const urlParams = new URLSearchParams(window.location.search);
+        const paymentId = urlParams.get('paymentId');
+        
+        // Initialize page
+        async function init() {
+            if (!paymentId) {
+                alert('Invalid payment session');
+                window.location.href = 'index.html';
+                return;
+            }
+            
+            await loadPaymentSession();
+        }
+        
+        // Load payment session data
+        async function loadPaymentSession() {
+            try {
+                const response = await fetch(`/api/v1/payments/${paymentId}`);
+                const session = await response.json();
+                
+                if (response.ok) {
+                    updateUI(session);
+                } else {
+                    alert('Payment session not found');
+                    window.location.href = 'index.html';
+                }
+            } catch (error) {
+                console.error('Error loading payment session:', error);
+                alert('Error loading payment session');
+                window.location.href = 'index.html';
+            }
+        }
+        
+        // Update UI with payment session data
+        function updateUI(session) {
+            document.getElementById('productName').textContent = session.productName;
+            document.getElementById('productPrice').textContent = `$${session.amount.toFixed(2)}`;
+            document.getElementById('paymentId').textContent = session.paymentId;
+            document.getElementById('tokenSymbol').textContent = session.tokenSymbol;
+            document.getElementById('amount').textContent = `${session.amount} ${session.tokenSymbol}`;
+            document.getElementById('receiverAddress').textContent = session.receiverAddress;
+            
+            if (session.transactionHash) {
+                document.getElementById('txHash').textContent = session.transactionHash;
+            }
+            
+            if (session.senderAddress) {
+                document.getElementById('senderAddress').textContent = session.senderAddress;
+            }
+            
+            if (session.blockNumber) {
+                document.getElementById('blockNumber').textContent = session.blockNumber;
+            }
+            
+            if (session.confirmedAt) {
+                document.getElementById('confirmedAt').textContent = new Date(session.confirmedAt).toLocaleString();
+            }
+            
+            // Set explorer link
+            if (session.transactionHash) {
+                const explorerLink = document.getElementById('explorerLink');
+                explorerLink.href = `https://bscscan.com/tx/${session.transactionHash}`;
+                explorerLink.style.display = 'inline-block';
+            }
+        }
+        
+        // Initialize page when loaded
+        window.onload = init;
+    </script>
+</body>
+</html>

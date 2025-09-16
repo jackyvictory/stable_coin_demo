@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Payment - Stable Coin Payment System</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f8f9fa;
+            color: #333;
+        }
+        .header {
+            background-color: #007bff;
+            color: white;
+            padding: 1rem;
+            text-align: center;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        .payment-card {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            padding: 2rem;
+            margin-bottom: 2rem;
+        }
+        .product-info {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+        .product-info h2 {
+            margin-bottom: 0.5rem;
+        }
+        .product-info .price {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #007bff;
+        }
+        .payment-methods {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+        .payment-method {
+            border: 2px solid #eee;
+            border-radius: 8px;
+            padding: 1rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .payment-method:hover {
+            border-color: #007bff;
+        }
+        .payment-method.selected {
+            border-color: #007bff;
+            background-color: #e6f2ff;
+        }
+        .payment-method i {
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+        }
+        .networks {
+            margin-bottom: 2rem;
+        }
+        .networks h3 {
+            margin-bottom: 1rem;
+        }
+        .network-options {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+        .network-option {
+            border: 2px solid #eee;
+            border-radius: 8px;
+            padding: 1rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .network-option:hover {
+            border-color: #007bff;
+        }
+        .network-option.selected {
+            border-color: #007bff;
+            background-color: #e6f2ff;
+        }
+        .btn {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: background-color 0.3s ease;
+            width: 100%;
+        }
+        .btn:hover {
+            background-color: #0056b3;
+        }
+        .btn:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+        .result {
+            margin-top: 1rem;
+            padding: 1rem;
+            border-radius: 4px;
+            display: none;
+        }
+        .result.success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .result.error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .back-link {
+            display: block;
+            text-align: center;
+            margin-top: 1rem;
+            color: #007bff;
+            text-decoration: none;
+        }
+        .back-link:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Payment Processing</h1>
+        <p>Complete your purchase with stable coins</p>
+    </div>
+    
+    <div class="container">
+        <div class="payment-card">
+            <div class="product-info">
+                <h2 id="productName">Product Name</h2>
+                <div class="price" id="productPrice">$0.00</div>
+            </div>
+            
+            <div class="payment-methods">
+                <div class="payment-method" onclick="selectToken('USDT')">
+                    <i>💵</i>
+                    <h3>USDT</h3>
+                    <p>Tether USD</p>
+                </div>
+                
+                <div class="payment-method" onclick="selectToken('USDC')">
+                    <i>💵</i>
+                    <h3>USDC</h3>
+                    <p>USD Coin</p>
+                </div>
+                
+                <div class="payment-method" onclick="selectToken('BUSD')">
+                    <i>💵</i>
+                    <h3>BUSD</h3>
+                    <p>Binance USD</p>
+                </div>
+            </div>
+            
+            <div class="networks">
+                <h3>Select Network</h3>
+                <div class="network-options">
+                    <div class="network-option" onclick="selectNetwork('BSC')">
+                        <i>🔷</i>
+                        <h4>BNB Smart Chain</h4>
+                        <p>Low fees, fast transactions</p>
+                    </div>
+                </div>
+            </div>
+            
+            <button class="btn" id="continueBtn" onclick="createPayment()" disabled>Continue to Payment</button>
+            
+            <div id="result" class="result"></div>
+            
+            <a href="index.html" class="back-link">← Back to Products</a>
+        </div>
+    </div>
+
+    <script>
+        // Get URL parameters
+        const urlParams = new URLSearchParams(window.location.search);
+        const productId = urlParams.get('productId');
+        const productName = urlParams.get('productName');
+        const amount = parseFloat(urlParams.get('amount'));
+        
+        // Set product info
+        document.getElementById('productName').textContent = productName;
+        document.getElementById('productPrice').textContent = `$${amount.toFixed(2)}`;
+        
+        // Selected options
+        let selectedToken = null;
+        let selectedNetwork = null;
+        
+        // Set selected token
+        function selectToken(token) {
+            // Remove selected class from all tokens
+            document.querySelectorAll('.payment-method').forEach(el => {
+                el.classList.remove('selected');
+            });
+            
+            // Add selected class to clicked token
+            event.currentTarget.classList.add('selected');
+            
+            selectedToken = token;
+            updateContinueButton();
+        }
+        
+        // Set selected network
+        function selectNetwork(network) {
+            // Remove selected class from all networks
+            document.querySelectorAll('.network-option').forEach(el => {
+                el.classList.remove('selected');
+            });
+            
+            // Add selected class to clicked network
+            event.currentTarget.classList.add('selected');
+            
+            selectedNetwork = network;
+            updateContinueButton();
+        }
+        
+        // Update continue button state
+        function updateContinueButton() {
+            const continueBtn = document.getElementById('continueBtn');
+            continueBtn.disabled = !(selectedToken && selectedNetwork);
+        }
+        
+        // Create payment session
+        async function createPayment() {
+            const continueBtn = document.getElementById('continueBtn');
+            continueBtn.disabled = true;
+            continueBtn.textContent = 'Processing...';
+            
+            const paymentData = {
+                productId: productId,
+                productName: productName,
+                amount: amount,
+                currency: 'USD',
+                tokenSymbol: selectedToken,
+                networkId: selectedNetwork,
+                receiverAddress: '0xe27577B0e3920cE35f100f66430de0108cb78a04'
+            };
+            
+            try {
+                const response = await fetch('/api/v1/payments', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(paymentData)
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    // Redirect to QR code page
+                    window.location.href = `qrcode.html?paymentId=${result.paymentId}`;
+                } else {
+                    showError(`Error: ${result.message}`);
+                }
+            } catch (error) {
+                showError(`Error: ${error.message}`);
+            } finally {
+                continueBtn.disabled = false;
+                continueBtn.textContent = 'Continue to Payment';
+            }
+        }
+        
+        // Show error message
+        function showError(message) {
+            const resultDiv = document.getElementById('result');
+            resultDiv.textContent = message;
+            resultDiv.className = 'result error';
+            resultDiv.style.display = 'block';
+        }
+    </script>
+</body>
+</html>

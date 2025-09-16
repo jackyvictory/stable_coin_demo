@@ -764,9 +764,18 @@ case "\$1" in
             exit 1
         fi
         ;;
+    "clear-cache")
+        echo "清除浏览器缓存提示..."
+        # 发送特殊头部提示浏览器不要使用缓存
+        curl -X POST -H "Cache-Control: no-cache, no-store, must-revalidate" \
+             -H "Pragma: no-cache" \
+             -H "Expires: 0" \
+             http://localhost/clear-cache 2>/dev/null || true
+        echo "✅ 已发送清除缓存提示"
+        ;;
     *)
         echo "Stable Coin 管理脚本"
-        echo "使用方法: \$0 {start|stop|restart|logs|status|ssl-renew}"
+        echo "使用方法: \$0 {start|stop|restart|logs|status|ssl-renew|clear-cache}"
         ;;
 esac
 MANAGE_SCRIPT
@@ -808,6 +817,10 @@ if [ -f "ssl/cert.pem" ]; then
 else
     echo "未找到 SSL 证书"
 fi
+
+# 提示浏览器清除缓存
+echo "💡 提示浏览器清除缓存..."
+./manage.sh clear-cache
 EOF
 log_success "HTTPS应用部署完成"
 
@@ -916,5 +929,12 @@ log_info "⚡ 性能优化:"
 log_info "  基础组件: 已缓存，下次部署将跳过下载"
 log_info "  构建时间: 后续部署将显著加快"
 log_info "  镜像大小: 优化的分层结构"
+echo
+log_info "💡 浏览器缓存提示:"
+log_info "  由于我们已启用资源哈希处理，浏览器会自动加载最新版本的资源"
+log_info "  如果您仍然看到旧版本，请尝试以下操作："
+log_info "    1. 强制刷新页面 (Ctrl+F5 或 Cmd+Shift+R)"
+log_info "    2. 清除浏览器缓存"
+log_info "    3. 在开发者工具中勾选'Disable Cache'选项"
 echo
 log_success "🚀 享受你的优化HTTPS应用吧！"
