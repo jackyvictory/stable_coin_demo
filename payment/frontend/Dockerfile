@@ -25,6 +25,12 @@ COPY --from=builder /app/dist /usr/share/nginx/html
 # Copy nginx configuration
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 
+# Copy deployment configurations
+COPY docker-compose.prod.yml manage.sh ./
+
+# Make manage script executable
+RUN chmod +x manage.sh
+
 # Expose port
 EXPOSE 3000
 

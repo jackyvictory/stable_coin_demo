@@ -25,6 +25,9 @@ FROM alpine:latest
 # Install ca-certificates for HTTPS requests
 RUN apk --no-cache add ca-certificates
 
+# Install wget for health checks
+RUN apk --no-cache add wget
+
 # Create app directory
 WORKDIR /app
 
@@ -33,6 +36,12 @@ RUN mkdir -p /app/data
 
 # Copy binary from builder stage
 COPY --from=builder /app/bin/api .
+
+# Copy deployment configurations
+COPY docker-compose.prod.yml manage.sh ./
+
+# Make manage script executable
+RUN chmod +x manage.sh
 
 # Expose port
 EXPOSE 8080

@@ -109,6 +109,14 @@ func main() {
 
 // setupRoutes sets up the API routes
 func setupRoutes(router *gin.Engine, handler *api.Handler, wsManager *websocket.Manager) {
+	// Root endpoint - redirect to health check
+	router.GET("/", func(c *gin.Context) {
+		c.JSON(200, gin.H{
+			"status":  "ok",
+			"message": "Payment API is running",
+		})
+	})
+
 	// Health check endpoint
 	router.GET("/health", func(c *gin.Context) {
 		c.JSON(200, gin.H{
