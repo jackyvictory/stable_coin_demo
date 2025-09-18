@@ -1,0 +1,48 @@
+version: '3.8'
+
+services:
+  backend:
+    image: payment-backend:__IMAGE_TAG__
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./data:/app/data
+    environment:
+      - SERVER_PORT=8080
+      - DB_PATH=/app/data/payment.db
+      - JWT_SECRET=payment_secret_key
+      - BLOCKCHAIN_RPC=https://bsc-dataseed1.binance.org/
+      - RECEIVER_ADDRESS=0xe27577B0e3920cE35f100f66430de0108cb78a04
+      - PAYMENT_TIMEOUT=30
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--method=GET", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf
+      - ./ssl:/etc/nginx/ssl
+      - ./logs:/var/log/nginx
+      - ./certbot/www:/var/www/certbot
+      - ./certbot/conf:/etc/letsencrypt
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+  certbot:
+    image: certbot/certbot
+    volumes:
+      - ./certbot/www:/var/www/certbot
+      - ./certbot/conf:/etc/letsencrypt
+    entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $$$$; done;'"
+
+volumes:
+  payment-data:
