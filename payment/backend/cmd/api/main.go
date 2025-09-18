@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"payment-backend/internal/api"
+	"payment-backend/internal/api/websocket"
 	"payment-backend/internal/blockchain"
 	"payment-backend/internal/config"
 	"payment-backend/internal/repository"
@@ -43,15 +44,30 @@ func main() {
 	// Initialize repository
 	repo := repository.NewRepository(db)
 
-	// Initialize blockchain service
+	// Get network configuration from database to get WebSocket URL
+	var websocketURL *string
+	err = db.QueryRow("SELECT websocket_url FROM networks WHERE id = 'BSC' AND enabled = TRUE").Scan(&websocketURL)
+	if err != nil {
+		log.Printf("Warning: failed to get WebSocket URL from database: %v", err)
+	}
+
+		// Initialize blockchain service
 	bcConfig := blockchain.Config{
 		RPCURL:          cfg.BlockchainRPC,
-		WebsocketURL:    "", // Could be configurable
+		WebsocketURL:    "", // Will be set from database
 		ChainID:         56, // BSC chain ID
 		ReceiverAddress: cfg.ReceiverAddress,
 	}
-	
-	bcService, err := blockchain.NewService(bcConfig)
+
+	// Set WebSocket URL if available
+	if websocketURL != nil {
+		bcConfig.WebsocketURL = *websocketURL
+	}
+
+	// Create a temporary channel for blockchain service initialization
+	tempPaymentCh := make(chan *blockchain.PaymentStatusUpdate, 100)
+
+	bcService, err := blockchain.NewService(bcConfig, tempPaymentCh)
 	if err != nil {
 		log.Fatalf("Failed to initialize blockchain service: %v", err)
 	}
@@ -62,17 +78,26 @@ func main() {
 		ReceiverAddress: cfg.ReceiverAddress,
 		PaymentTimeout:  time.Duration(cfg.PaymentTimeout) * time.Minute,
 	}
-	
+
 	paymentService := service.NewPaymentService(repo, bcService, paymentConfig)
 
+	// Initialize WebSocket manager
+	wsManager := websocket.NewManager(paymentService)
+
 	// Initialize handlers
-	handler := api.NewHandler(paymentService)
+	handler := api.NewHandler(paymentService, wsManager, cfg)
+
+	// Update blockchain service with the real payment channel
+	bcService.SetPaymentChannel(wsManager.GetPaymentChannel())
 
 	// Initialize Gin router
 	router := gin.Default()
 
 	// Setup routes
-	setupRoutes(router, handler)
+	setupRoutes(router, handler, wsManager)
+
+	// Start payment status listener
+	go wsManager.StartPaymentStatusListener()
 
 	// Start server
 	addr := fmt.Sprintf(":%d", cfg.ServerPort)
@@ -83,7 +108,7 @@ func main() {
 }
 
 // setupRoutes sets up the API routes
-func setupRoutes(router *gin.Engine, handler *api.Handler) {
+func setupRoutes(router *gin.Engine, handler *api.Handler, wsManager *websocket.Manager) {
 	// Health check endpoint
 	router.GET("/health", func(c *gin.Context) {
 		c.JSON(200, gin.H{
@@ -91,6 +116,12 @@ func setupRoutes(router *gin.Engine, handler *api.Handler) {
 			"message": "Payment API is running",
 		})
 	})
+
+	// WebSocket endpoint
+	router.GET("/ws/payments/:paymentId", wsManager.HandleConnection)
+
+	// Debug endpoint (only available in debug mode)
+	router.POST("/debug/payments/:paymentId/simulate-success", handler.DebugSimulatePayment)
 
 	// API v1 routes
 	v1 := router.Group("/api/v1")
@@ -110,6 +141,13 @@ func setupRoutes(router *gin.Engine, handler *api.Handler) {
 		networks := v1.Group("/networks")
 		{
 			networks.GET("", handler.GetNetworks)
+		}
+
+		stats := v1.Group("/stats")
+		{
+			stats.GET("/payments", handler.GetPaymentStats)
+			stats.GET("/monitoring", handler.GetMonitoringStats)
+			stats.GET("/system", handler.GetSystemStats)
 		}
 	}
 }
@@ -171,8 +209,8 @@ func runMigrations(db *sql.DB) error {
 		)`,
 
 		// Insert default network configuration
-		`INSERT OR IGNORE INTO networks (id, name, chain_id, rpc_url, websocket_url, block_explorer) VALUES 
-		('BSC', 'BNB Smart Chain', 56, 'https://bsc-dataseed1.binance.org/', 'wss://bsc-ws-node.nariox.org', 'https://bscscan.com')`,
+		`INSERT OR IGNORE INTO networks (id, name, chain_id, rpc_url, websocket_url, block_explorer) VALUES
+		('BSC', 'BNB Smart Chain', 56, 'https://bsc-dataseed1.binance.org/', 'wss://speedy-nodes-nyc.moralis.io/YOUR_API_KEY/bsc/mainnet/ws', 'https://bscscan.com')`,
 
 		// Insert default token configurations
 		`INSERT OR IGNORE INTO tokens (symbol, name, contract_address, decimals, network_id) VALUES 

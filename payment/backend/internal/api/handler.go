@@ -1,11 +1,14 @@
 package api
 
 import (
+	"fmt"
 	"net/http"
 	"time"
 
+	"payment-backend/internal/config"
 	"payment-backend/internal/models"
 	"payment-backend/internal/service"
+	"payment-backend/internal/api/websocket"
 
 	"github.com/gin-gonic/gin"
 )
@@ -13,12 +16,16 @@ import (
 // Handler provides HTTP handlers
 type Handler struct {
 	paymentService *service.PaymentService
+	wsManager      *websocket.Manager
+	config         *config.Config
 }
 
 // NewHandler creates a new handler
-func NewHandler(paymentService *service.PaymentService) *Handler {
+func NewHandler(paymentService *service.PaymentService, wsManager *websocket.Manager, config *config.Config) *Handler {
 	return &Handler{
 		paymentService: paymentService,
+		wsManager:      wsManager,
+		config:         config,
 	}
 }
 
@@ -225,6 +232,103 @@ func (h *Handler) GetNetworks(c *gin.Context) {
 	})
 }
 
+// GetPaymentStats retrieves payment statistics
+// @Summary Get payment statistics
+// @Description Retrieve payment statistics and analytics
+// @Tags statistics
+// @Produce json
+// @Success 200 {object} PaymentStatsResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /api/v1/stats/payments [get]
+func (h *Handler) GetPaymentStats(c *gin.Context) {
+	stats, err := h.paymentService.GetPaymentStats(c.Request.Context())
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, ErrorResponse{
+			Code:    http.StatusInternalServerError,
+			Message: "Failed to retrieve payment statistics",
+			Details: err.Error(),
+		})
+		return
+	}
+
+	// Convert models.PaymentStats to PaymentStatsResponse
+	response := PaymentStatsResponse{
+		TotalPayments:       stats.TotalPayments,
+		SuccessfulPayments:  stats.SuccessfulPayments,
+		FailedPayments:      stats.FailedPayments,
+		SuccessRate:         stats.SuccessRate,
+		PaymentsByToken:     stats.PaymentsByToken,
+		PaymentsByPeriod:    stats.PaymentsByPeriod,
+		AverageProcessingTime: stats.AverageProcessingTime,
+		FailureReasons:      stats.FailureReasons,
+	}
+
+	c.JSON(http.StatusOK, response)
+}
+
+// GetMonitoringStats retrieves monitoring statistics
+// @Summary Get monitoring performance statistics
+// @Description Retrieve blockchain monitoring and performance statistics
+// @Tags statistics
+// @Produce json
+// @Success 200 {object} MonitoringStatsResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /api/v1/stats/monitoring [get]
+func (h *Handler) GetMonitoringStats(c *gin.Context) {
+	stats, err := h.paymentService.GetMonitoringStats(c.Request.Context())
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, ErrorResponse{
+			Code:    http.StatusInternalServerError,
+			Message: "Failed to retrieve monitoring statistics",
+			Details: err.Error(),
+		})
+		return
+	}
+
+	// Convert models.MonitoringStats to MonitoringStatsResponse
+	response := MonitoringStatsResponse{
+		WebsocketConnections:  stats.WebsocketConnections,
+		BlockchainMonitoring:  stats.BlockchainMonitoring,
+		ValidationPerformance: stats.ValidationPerformance,
+	}
+
+	c.JSON(http.StatusOK, response)
+}
+
+// GetSystemStats retrieves system health statistics
+// @Summary Get system health statistics
+// @Description Retrieve system health and performance statistics
+// @Tags statistics
+// @Produce json
+// @Success 200 {object} SystemStatsResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /api/v1/stats/system [get]
+func (h *Handler) GetSystemStats(c *gin.Context) {
+	stats, err := h.paymentService.GetSystemStats(c.Request.Context())
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, ErrorResponse{
+			Code:    http.StatusInternalServerError,
+			Message: "Failed to retrieve system statistics",
+			Details: err.Error(),
+		})
+		return
+	}
+
+	// Convert models.SystemStats to SystemStatsResponse
+	response := SystemStatsResponse{
+		Uptime:             stats.Uptime,
+		CPUUsage:           stats.CPUUsage,
+		MemoryUsage:        stats.MemoryUsage,
+		DiskUsage:          stats.DiskUsage,
+		APIResponseTime:    stats.APIResponseTime,
+		ErrorRate:          stats.ErrorRate,
+		DatabaseHealth:     stats.DatabaseHealth,
+		BlockchainConnection: stats.BlockchainConnection,
+	}
+
+	c.JSON(http.StatusOK, response)
+}
+
 // CreatePaymentRequest represents the request body for creating a payment session
 type CreatePaymentRequest struct {
 	ProductID       string  `json:"productId"`
@@ -279,6 +383,43 @@ type TokenResponse struct {
 // NetworksResponse represents the response for networks
 type NetworksResponse struct {
 	Networks []*NetworkResponse `json:"networks"`
+}
+
+// PaymentStatsResponse represents the response for payment statistics
+type PaymentStatsResponse struct {
+	TotalPayments       int                `json:"total_payments"`
+	SuccessfulPayments  int                `json:"successful_payments"`
+	FailedPayments      int                `json:"failed_payments"`
+	SuccessRate         float64            `json:"success_rate"`
+	PaymentsByToken     map[string]int     `json:"payments_by_token"`
+	PaymentsByPeriod    map[string]int     `json:"payments_by_period"`
+	AverageProcessingTime float64          `json:"average_processing_time"`
+	FailureReasons      map[string]int     `json:"failure_reasons"`
+}
+
+// MonitoringStatsResponse represents the response for monitoring statistics
+type MonitoringStatsResponse struct {
+	WebsocketConnections   map[string]int `json:"websocket_connections"`
+	BlockchainMonitoring   map[string]interface{} `json:"blockchain_monitoring"`
+	ValidationPerformance  map[string]interface{} `json:"validation_performance"`
+}
+
+// SystemStatsResponse represents the response for system statistics
+type SystemStatsResponse struct {
+	Uptime             int     `json:"uptime"`
+	CPUUsage           float64 `json:"cpu_usage"`
+	MemoryUsage        float64 `json:"memory_usage"`
+	DiskUsage          float64 `json:"disk_usage"`
+	APIResponseTime    int     `json:"api_response_time"`
+	ErrorRate          float64 `json:"error_rate"`
+	DatabaseHealth     string  `json:"database_health"`
+	BlockchainConnection string `json:"blockchain_connection"`
+}
+
+// HealthResponse represents the response for health check
+type HealthResponse struct {
+	Status  string `json:"status"`
+	Message string `json:"message"`
 }
 
 // NetworkResponse represents a network in the response
@@ -352,4 +493,79 @@ func toNetworksResponse(networks []*models.Network) []*NetworkResponse {
 		}
 	}
 	return response
+}
+
+// DebugSimulatePayment simulates a payment success for testing purposes
+// @Summary Simulate payment success (Debug only)
+// @Description Sends a payment success message via WebSocket for testing
+// @Tags debug
+// @Accept json
+// @Produce json
+// @Param paymentId path string true "Payment ID"
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} ErrorResponse
+// @Failure 403 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /debug/payments/{paymentId}/simulate-success [post]
+func (h *Handler) DebugSimulatePayment(c *gin.Context) {
+	// Only allow in debug mode
+	if !h.config.DebugMode {
+		c.JSON(http.StatusForbidden, ErrorResponse{
+			Code:    http.StatusForbidden,
+			Message: "Debug endpoints are not available in production",
+		})
+		return
+	}
+
+	paymentID := c.Param("paymentId")
+	if paymentID == "" {
+		c.JSON(http.StatusBadRequest, ErrorResponse{
+			Code:    http.StatusBadRequest,
+			Message: "Payment ID is required",
+		})
+		return
+	}
+
+	// Verify payment exists
+	payment, err := h.paymentService.GetPaymentSession(c.Request.Context(), paymentID)
+	if err != nil {
+		c.JSON(http.StatusNotFound, ErrorResponse{
+			Code:    http.StatusNotFound,
+			Message: "Payment not found",
+			Details: err.Error(),
+		})
+		return
+	}
+
+	// Update payment status to paid in database
+	now := time.Now()
+	senderAddress := "0x1234567890abcdef1234567890abcdef12345678"
+	transactionHash := "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef"
+	blockNumber := int64(12345678)
+
+	err = h.paymentService.UpdatePaymentStatus(c.Request.Context(), paymentID, models.PaymentPaid, &senderAddress, &transactionHash, &blockNumber, &now)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, ErrorResponse{
+			Code:    http.StatusInternalServerError,
+			Message: "Failed to update payment status",
+			Details: err.Error(),
+		})
+		return
+	}
+
+	// Send payment success message via WebSocket
+	h.wsManager.PushPaymentStatusUpdate(
+		paymentID,
+		"paid",
+		transactionHash,
+		blockNumber,
+		12,
+		fmt.Sprintf("%.6f", payment.Amount),
+		payment.TokenSymbol,
+	)
+
+	c.JSON(http.StatusOK, gin.H{
+		"message":   "Payment success simulated",
+		"paymentId": paymentID,
+	})
 }

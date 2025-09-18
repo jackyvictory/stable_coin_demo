@@ -75,6 +75,49 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
 
+  /api/v1/payments/{paymentId}/process:
+    post:
+      summary: Process payment
+      description: Process a payment by validating the transaction hash
+      parameters:
+        - name: paymentId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Unique identifier of the payment session
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProcessPaymentRequest'
+      responses:
+        '200':
+          description: Payment processed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaymentSessionResponse'
+        '400':
+          description: Invalid request data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Payment session not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
   /api/v1/tokens:
     get:
       summary: Get supported tokens
@@ -111,6 +154,91 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
 
+  /api/v1/stats/payments:
+    get:
+      summary: Get payment statistics
+      description: Retrieve payment statistics and analytics
+      responses:
+        '200':
+          description: Payment statistics retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaymentStatsResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/v1/stats/monitoring:
+    get:
+      summary: Get monitoring performance statistics
+      description: Retrieve blockchain monitoring and performance statistics
+      responses:
+        '200':
+          description: Monitoring statistics retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MonitoringStatsResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/v1/stats/system:
+    get:
+      summary: Get system health statistics
+      description: Retrieve system health and performance statistics
+      responses:
+        '200':
+          description: System statistics retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SystemStatsResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /health:
+    get:
+      summary: Health check
+      description: Check the health status of the API service
+      responses:
+        '200':
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+        '500':
+          description: Service is unhealthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+# WebSocket Endpoints (Not part of REST API)
+# WebSocket connection endpoint: /ws/payments/{paymentId}
+# Description: Establishes a WebSocket connection for real-time payment status updates
+# Authentication: Payment ID must be valid and correspond to an existing payment session
+# Message Format: JSON messages as defined in WebSocketMessage schema components
+# Connection Flow:
+# 1. Client connects to /ws/payments/{paymentId} with a valid payment ID
+# 2. Server validates payment ID and establishes connection
+# 3. Server sends connection_ack message upon successful connection
+# 4. Server sends payment_status_update messages when payment status changes
+# 5. Server sends error messages for any issues
+# 6. Client and server exchange ping/pong messages to maintain connection
+
 components:
   schemas:
     CreatePaymentRequest:
@@ -122,6 +250,7 @@ components:
         - currency
         - tokenSymbol
         - networkId
+        - receiverAddress
       properties:
         productId:
           type: string
@@ -148,6 +277,20 @@ components:
           type: string
           example: "BSC"
           description: Network identifier
+        receiverAddress:
+          type: string
+          example: "0xe27577B0e3920cE35f100f66430de0108cb78a04"
+          description: Receiver wallet address
+
+    ProcessPaymentRequest:
+      type: object
+      required:
+        - transactionHash
+      properties:
+        transactionHash:
+          type: string
+          example: "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef"
+          description: Transaction hash to validate
 
     PaymentSessionResponse:
       type: object
@@ -178,6 +321,9 @@ components:
         receiverAddress:
           type: string
           example: "0xe27577B0e3920cE35f100f66430de0108cb78a04"
+        senderAddress:
+          type: string
+          example: "0xabcdef1234567890abcdef1234567890abcdef12"
         status:
           type: string
           enum: [created, pending, paid, expired, failed]
@@ -267,6 +413,143 @@ components:
           type: boolean
           example: true
 
+    PaymentStatsResponse:
+      type: object
+      properties:
+        total_payments:
+          type: integer
+          example: 1250
+        successful_payments:
+          type: integer
+          example: 1180
+        failed_payments:
+          type: integer
+          example: 70
+        success_rate:
+          type: number
+          format: float
+          example: 94.4
+        payments_by_token:
+          type: object
+          additionalProperties:
+            type: integer
+          example:
+            USDT: 520
+            USDC: 430
+            BUSD: 300
+        payments_by_period:
+          type: object
+          properties:
+            "24h":
+              type: integer
+              example: 45
+            "7d":
+              type: integer
+              example: 320
+            "30d":
+              type: integer
+              example: 1250
+        average_processing_time:
+          type: number
+          format: float
+          example: 15.2
+        failure_reasons:
+          type: object
+          properties:
+            amount_mismatch:
+              type: integer
+              example: 35
+            address_mismatch:
+              type: integer
+              example: 20
+            transaction_failed:
+              type: integer
+              example: 15
+
+    MonitoringStatsResponse:
+      type: object
+      properties:
+        websocket_connections:
+          type: object
+          properties:
+            active:
+              type: integer
+              example: 3
+            healthy:
+              type: integer
+              example: 2
+            degraded:
+              type: integer
+              example: 1
+        blockchain_monitoring:
+          type: object
+          properties:
+            average_latency:
+              type: integer
+              example: 120
+            last_block_processed:
+              type: integer
+              example: 28756341
+            blocks_behind:
+              type: integer
+              example: 0
+            events_detected:
+              type: integer
+              example: 1250
+        validation_performance:
+          type: object
+          properties:
+            average_validation_time:
+              type: number
+              format: float
+              example: 2.1
+            validation_success_rate:
+              type: number
+              format: float
+              example: 99.2
+
+    SystemStatsResponse:
+      type: object
+      properties:
+        uptime:
+          type: integer
+          example: 86400
+        cpu_usage:
+          type: number
+          format: float
+          example: 25.5
+        memory_usage:
+          type: number
+          format: float
+          example: 45.2
+        disk_usage:
+          type: number
+          format: float
+          example: 12.3
+        api_response_time:
+          type: integer
+          example: 45
+        error_rate:
+          type: number
+          format: float
+          example: 0.1
+        database_health:
+          type: string
+          example: "healthy"
+        blockchain_connection:
+          type: string
+          example: "connected"
+
+    HealthResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: "ok"
+        message:
+          type: string
+          example: "Payment API is running"
+
     Error:
       type: object
       properties:
@@ -285,3 +568,108 @@ components:
       type: apiKey
       in: header
       name: X-API-Key
+
+  # WebSocket message schemas
+  WebSocketMessage:
+    oneOf:
+      - $ref: '#/components/schemas/WebSocketConnectionAck'
+      - $ref: '#/components/schemas/WebSocketPaymentStatusUpdate'
+      - $ref: '#/components/schemas/WebSocketErrorMessage'
+      - $ref: '#/components/schemas/WebSocketPingPong'
+
+  WebSocketConnectionAck:
+    type: object
+    properties:
+      type:
+        type: string
+        example: "connection_ack"
+      paymentId:
+        type: string
+        example: "pay_1234567890"
+      data:
+        type: object
+        properties:
+          status:
+            type: string
+            example: "connected"
+          sessionId:
+            type: string
+            example: "sess_0987654321"
+      timestamp:
+        type: string
+        format: date-time
+        example: "2023-12-01T10:30:00Z"
+
+  WebSocketPaymentStatusUpdate:
+    type: object
+    properties:
+      type:
+        type: string
+        example: "payment_status_update"
+      paymentId:
+        type: string
+        example: "pay_1234567890"
+      data:
+        type: object
+        properties:
+          status:
+            type: string
+            enum: [created, pending, paid, expired, failed]
+            example: "paid"
+          transactionHash:
+            type: string
+            example: "0x1234567890abcdef..."
+          blockNumber:
+            type: integer
+            example: 12345678
+          confirmations:
+            type: integer
+            example: 3
+          amount:
+            type: string
+            example: "10.00"
+          token:
+            type: string
+            example: "USDT"
+      timestamp:
+        type: string
+        format: date-time
+        example: "2023-12-01T10:30:00Z"
+
+  WebSocketErrorMessage:
+    type: object
+    properties:
+      type:
+        type: string
+        example: "error"
+      paymentId:
+        type: string
+        example: "pay_1234567890"
+      data:
+        type: object
+        properties:
+          code:
+            type: integer
+            example: 400
+          message:
+            type: string
+            example: "Invalid payment ID"
+      timestamp:
+        type: string
+        format: date-time
+        example: "2023-12-01T10:30:00Z"
+
+  WebSocketPingPong:
+    type: object
+    properties:
+      type:
+        type: string
+        enum: [ping, pong]
+        example: "ping"
+      paymentId:
+        type: string
+        example: "pay_1234567890"
+      timestamp:
+        type: string
+        format: date-time
+        example: "2023-12-01T10:30:00Z"

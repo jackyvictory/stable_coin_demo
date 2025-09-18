@@ -28,6 +28,7 @@ type BlockchainService interface {
 	ValidatePayment(ctx context.Context, txHash common.Hash, expectedAmount *big.Int, tokenSymbol string) (*blockchain.PaymentValidationResult, error)
 	GetTokenBalance(ctx context.Context, tokenAddress, ownerAddress common.Address) (*big.Int, error)
 	GetLatestBlockNumber(ctx context.Context) (*big.Int, error)
+	StartPaymentMonitoringWithCallback(paymentID, tokenSymbol string, expectedAmount *big.Int, timeout time.Duration, callback blockchain.PaymentCallback) error
 	Close()
 }
 
@@ -116,6 +117,61 @@ func (s *PaymentService) GetAllNetworks(ctx context.Context) ([]*models.Network,
 	return networks, nil
 }
 
+// GetPaymentStats retrieves payment statistics
+func (s *PaymentService) GetPaymentStats(ctx context.Context) (*models.PaymentStats, error) {
+	// This is a simplified implementation
+	// In a real implementation, you would query the database for statistics
+	return &models.PaymentStats{
+		TotalPayments:       0,
+		SuccessfulPayments:  0,
+		FailedPayments:      0,
+		SuccessRate:         0.0,
+		PaymentsByToken:     make(map[string]int),
+		PaymentsByPeriod:    make(map[string]int),
+		AverageProcessingTime: 0.0,
+		FailureReasons:      make(map[string]int),
+	}, nil
+}
+
+// GetMonitoringStats retrieves monitoring statistics
+func (s *PaymentService) GetMonitoringStats(ctx context.Context) (*models.MonitoringStats, error) {
+	// This is a simplified implementation
+	// In a real implementation, you would gather monitoring statistics
+	return &models.MonitoringStats{
+		WebsocketConnections: map[string]int{
+			"active":   0,
+			"healthy":  0,
+			"degraded": 0,
+		},
+		BlockchainMonitoring: map[string]interface{}{
+			"average_latency":        0,
+			"last_block_processed":   0,
+			"blocks_behind":          0,
+			"events_detected":        0,
+		},
+		ValidationPerformance: map[string]interface{}{
+			"average_validation_time": 0.0,
+			"validation_success_rate": 0.0,
+		},
+	}, nil
+}
+
+// GetSystemStats retrieves system health statistics
+func (s *PaymentService) GetSystemStats(ctx context.Context) (*models.SystemStats, error) {
+	// This is a simplified implementation
+	// In a real implementation, you would gather system statistics
+	return &models.SystemStats{
+		Uptime:             0,
+		CPUUsage:           0.0,
+		MemoryUsage:        0.0,
+		DiskUsage:          0.0,
+		APIResponseTime:    0,
+		ErrorRate:          0.0,
+		DatabaseHealth:     "unknown",
+		BlockchainConnection: "unknown",
+	}, nil
+}
+
 // UpdatePaymentStatus updates the status of a payment session
 func (s *PaymentService) UpdatePaymentStatus(ctx context.Context, paymentID string, status models.PaymentStatus, 
 	senderAddress *string, transactionHash *string, blockNumber *int64, confirmedAt *time.Time) error {
@@ -128,17 +184,48 @@ func (s *PaymentService) UpdatePaymentStatus(ctx context.Context, paymentID stri
 
 // monitorPayment monitors a payment session for completion
 func (s *PaymentService) monitorPayment(ctx context.Context, session *models.PaymentSession) {
-	// In a real implementation, this would:
-	// 1. Get the token contract address
-	// 2. Set up event monitoring for transfers to the receiver address
-	// 3. Validate incoming transactions
-	// 4. Update payment status when validated
-	
-	// For now, we'll just simulate monitoring
-	fmt.Printf("Started monitoring payment %s\n", session.PaymentID)
-	
-	// This would typically run in a goroutine and listen for blockchain events
-	// For demonstration purposes, we'll just return
+	// Try to start WebSocket monitoring for this payment
+	if bcServiceWithWebSocket, ok := s.bcService.(interface {
+		StartPaymentMonitoringWithCallback(paymentID, tokenSymbol string, expectedAmount *big.Int, timeout time.Duration, callback blockchain.PaymentCallback) error
+	}); ok {
+		// Convert amount to wei for monitoring
+		amountWei := new(big.Int)
+		amountWei.SetString(fmt.Sprintf("%.0f", session.Amount*1e18), 10)
+
+		// Start monitoring with callback to update payment status
+		callback := func(transfer *blockchain.TokenTransfer, err error) {
+			if err != nil {
+				fmt.Printf("Payment monitoring error for %s: %v\n", session.PaymentID, err)
+				// Update payment status to failed
+				s.UpdatePaymentStatus(ctx, session.PaymentID, models.PaymentFailed, nil, nil, nil, nil)
+				return
+			}
+
+			// Update payment status to paid
+			senderAddr := transfer.From.Hex()
+			txHashStr := transfer.TxHash.Hex()
+			blockNum := transfer.BlockNumber.Int64()
+			confirmedAt := time.Now()
+
+			err = s.UpdatePaymentStatus(ctx, session.PaymentID, models.PaymentPaid, &senderAddr, &txHashStr, &blockNum, &confirmedAt)
+			if err != nil {
+				fmt.Printf("Failed to update payment status for %s: %v\n", session.PaymentID, err)
+			} else {
+				fmt.Printf("Successfully updated payment status for %s to paid\n", session.PaymentID)
+			}
+		}
+
+		// Start monitoring with 30 minute timeout
+		timeout := 30 * time.Minute
+		if err := bcServiceWithWebSocket.StartPaymentMonitoringWithCallback(session.PaymentID, session.TokenSymbol, amountWei, timeout, callback); err != nil {
+			fmt.Printf("Failed to start WebSocket monitoring for payment %s: %v\n", session.PaymentID, err)
+		} else {
+			fmt.Printf("Started WebSocket monitoring for payment %s\n", session.PaymentID)
+		}
+	} else {
+		// Fallback to simulated monitoring
+		fmt.Printf("Started monitoring payment %s (simulated)\n", session.PaymentID)
+	}
 }
 
 // ProcessPayment processes a payment by validating the transaction

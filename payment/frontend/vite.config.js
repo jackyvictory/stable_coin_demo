@@ -20,10 +20,7 @@ export default defineConfig({
     emptyOutDir: true,
     rollupOptions: {
       input: {
-        main: resolve(__dirname, 'index.html'),
-        payment: resolve(__dirname, 'src/payment.html'),
-        qrcode: resolve(__dirname, 'src/qrcode.html'),
-        success: resolve(__dirname, 'src/success.html')
+        main: resolve(__dirname, 'index.html')
       }
     }
   }
