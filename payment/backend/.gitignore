@@ -1,0 +1,57 @@
+# Binaries for programs and plugins
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Test binary, built by go test.
+*_test
+
+# Output of the go coverage tool, specifically when used with LiteIDE
+*.out
+
+# Dependency directories (remove the comment below to include it)
+# vendor/
+
+# Go workspace file
+go.work
+
+# Build output
+bin/
+build/
+api_server
+blockchain-service
+main
+
+# Database files
+*.db
+*.db-journal
+
+# IDE files
+*.swp
+*.swo
+*~
+.DS_Store
+.idea/
+.vscode/
+
+# CLAUDE and QWEN files
+CLAUDE.md
+QWEN.md
+
+# Frontend build output
+frontend/dist/
+frontend/node_modules/
+
+# Environment files
+.env
+.env.local
+.env.production
+
+# Log files
+*.log
+
+# Temporary files
+*.tmp
+*.temp
