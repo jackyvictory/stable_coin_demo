@@ -55,8 +55,8 @@ func (s *PaymentService) CreatePaymentSession(ctx context.Context, req *CreatePa
 		return nil, fmt.Errorf("failed to generate payment ID: %w", err)
 	}
 
-	// Calculate expiration time
-	expiresAt := time.Now().Add(s.config.PaymentTimeout)
+	// Calculate expiration time using UTC to avoid timezone issues
+	expiresAt := time.Now().UTC().Add(s.config.PaymentTimeout)
 
 	// Generate QR code data (simplified)
 	qrCodeData := fmt.Sprintf("%s?amount=%f&token=%s", req.ReceiverAddress, req.Amount, req.TokenSymbol)

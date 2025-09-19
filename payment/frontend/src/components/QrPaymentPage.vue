@@ -203,13 +203,30 @@ export default {
       this.paymentStatus = session.status === 'created' ? 'waiting' : session.status
 
       // Parse expiration time and handle potential timezone issues
+      // Ensure we're working with UTC time to avoid timezone discrepancies
       this.expiryTime = new Date(session.expiresAt)
+
+      // If the time string doesn't contain timezone info, treat it as UTC
+      if (session.expiresAt && session.expiresAt.indexOf('Z') === -1 &&
+          session.expiresAt.indexOf('+') === -1 && session.expiresAt.indexOf('-') === -1) {
+        this.expiryTime = new Date(session.expiresAt + 'Z')
+      }
+
+      // If parsing still fails, log the error
+      if (isNaN(this.expiryTime.getTime())) {
+        console.error('Failed to parse expiration time:', session.expiresAt)
+        // Set a default expiration time (30 minutes from now)
+        const now = new Date()
+        this.expiryTime = new Date(now.getTime() + 30 * 60 * 1000)
+      }
 
       // Check if the parsed time is in the past (which indicates a timezone issue)
       const now = new Date()
-      if (this.expiryTime < now) {
+      // Use UTC time for comparison to avoid timezone issues
+      const nowUTC = new Date(now.getTime() + now.getTimezoneOffset() * 60000)
+      if (this.expiryTime < nowUTC) {
         // If expiration time is in the past, set it to 30 minutes from now
-        this.expiryTime = new Date(now.getTime() + 30 * 60 * 1000)
+        this.expiryTime = new Date(nowUTC.getTime() + 30 * 60 * 1000)
         console.warn('Expiration time appears to be in the past, using default 30 minutes from now')
       }
 
@@ -235,7 +252,9 @@ export default {
       if (!this.expiryTime) return
 
       const now = new Date()
-      const diff = this.expiryTime - now
+      // Use UTC time for comparison to avoid timezone issues
+      const nowUTC = new Date(now.getTime() + now.getTimezoneOffset() * 60000)
+      const diff = this.expiryTime - nowUTC
 
       if (diff <= 0) {
         this.timerText = 'Payment expired'
@@ -258,7 +277,10 @@ export default {
       // Try to connect to WebSocket for real-time updates
       try {
         this.paymentStatus = 'connecting'
-        this.websocket = new WebSocket(`ws://localhost:8080/ws/payments/${this.paymentId}`)
+        // Use relative path for WebSocket connection to work in both development and production
+        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
+        const host = window.location.host
+        this.websocket = new WebSocket(`${protocol}//${host}/ws/payments/${this.paymentId}`)
 
         this.websocket.onopen = () => {
           console.log('WebSocket connected')

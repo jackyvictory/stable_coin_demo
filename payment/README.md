@@ -21,6 +21,11 @@ payment/
 │   ├── migrations/          # 数据库迁移
 │   ├── go.mod               # Go模块
 │   └── Dockerfile           # 后端Docker镜像
+├── deploy/                  # 生产环境部署配置
+│   ├── deploy.sh            # 一键部署脚本
+│   ├── docker-compose.prod.yml # 生产环境Docker Compose配置
+│   ├── nginx.conf           # Nginx配置文件
+│   └── manage.sh            # 生产环境管理脚本
 ├── docker-compose.yml       # Docker Compose配置
 └── README.md                # 本文档
 ```
@@ -181,6 +186,97 @@ API使用OpenAPI 3.0规范进行文档化。您可以在`docs/api-spec.yaml`找�
 | BLOCKCHAIN_RPC | BSC RPC节点 | https://bsc-dataseed1.binance.org/ |
 | RECEIVER_ADDRESS | 收款地址 | 0xe27577B0e3920cE35f100f66430de0108cb78a04 |
 | PAYMENT_TIMEOUT | 支付会话超时(分钟) | 30 |
+
+## 生产环境部署
+
+项目提供了一键部署脚本，可以将应用部署到生产环境服务器。
+
+### 部署要求
+
+- 远程服务器运行Ubuntu/Debian系统
+- 服务器上已安装Docker和Docker Compose
+- 服务器可以访问互联网以下载基础镜像
+- 具有sudo权限的用户账户
+- SSH访问权限和私钥
+
+### 部署步骤
+
+```bash
+# 进入部署目录
+cd deploy
+
+# 执行部署脚本
+./deploy.sh <user@host> <domain> <ssh-key> <email> [options]
+
+# 示例
+# 全量部署(重新构建镜像)
+./deploy.sh ubuntu@18.141.172.113 payment.example.com ~/.ssh/key.pem admin@example.com
+
+# 全量部署(使用现有镜像)
+./deploy.sh ubuntu@18.141.172.113 payment.example.com ~/.ssh/key.pem admin@example.com --rebuild false
+
+# 单独部署前端
+./deploy.sh ubuntu@18.141.172.113 payment.example.com ~/.ssh/key.pem admin@example.com --mode frontend
+
+# 单独部署后端
+./deploy.sh ubuntu@18.141.172.113 payment.example.com ~/.ssh/key.pem admin@example.com --mode backend
+
+# 更新nginx配置
+./deploy.sh ubuntu@18.141.172.113 payment.example.com ~/.ssh/key.pem admin@example.com --mode nginx
+```
+
+部署脚本支持多种部署模式：
+1. 全量部署：同时部署前端和后端应用
+2. 单独部署前端：仅部署前端应用
+3. 单独部署后端：仅部署后端应用
+4. 更新nginx配置：仅更新Nginx配置文件
+
+### 部署脚本参数
+
+- `<user@host>`: SSH连接信息
+- `<domain>`: 应用域名
+- `<ssh-key>`: SSH私钥路径
+- `<email>`: SSL证书申请邮箱
+- `--mode <mode>`: 部署模式 (full/frontend/backend/nginx，默认为full)
+- `--rebuild <flag>`: 是否重新构建镜像 (true/false，默认为true)
+
+### 快速部署模式
+
+如果只需要更新应用而不需要重新构建镜像，可以使用快速部署模式：
+
+```bash
+./deploy.sh ubuntu@18.141.172.113 payment.example.com ~/.ssh/key.pem admin@example.com --rebuild false
+```
+
+### 生产环境管理
+
+部署完成后，可以使用`manage.sh`脚本在生产服务器上管理服务：
+
+```bash
+# 连接到生产服务器
+ssh -i ~/.ssh/key.pem ubuntu@18.141.172.113
+
+# 进入部署目录
+cd /opt/payment/backend
+
+# 查看服务状态
+./manage.sh status
+
+# 查看实时日志
+./manage.sh logs
+
+# 重启服务
+./manage.sh restart
+```
+
+`manage.sh`脚本提供了以下命令：
+- `start`: 启动所有服务
+- `stop`: 停止所有服务
+- `restart`: 重启所有服务
+- `logs`: 查看实时日志
+- `status`: 查看服务状态和健康检查
+- `ssl-renew`: 手动续期SSL证书
+- `init-ssl`: 初始化SSL证书
 
 ## 构建Docker镜像
 

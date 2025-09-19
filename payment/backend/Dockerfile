@@ -25,8 +25,8 @@ FROM alpine:latest
 # Install ca-certificates for HTTPS requests
 RUN apk --no-cache add ca-certificates
 
-# Install wget for health checks
-RUN apk --no-cache add wget
+# Install curl for health checks
+RUN apk --no-cache add curl
 
 # Create app directory
 WORKDIR /app
@@ -37,18 +37,15 @@ RUN mkdir -p /app/data
 # Copy binary from builder stage
 COPY --from=builder /app/bin/api .
 
-# Copy deployment configurations
-COPY docker-compose.prod.yml manage.sh ./
-
-# Make manage script executable
-RUN chmod +x manage.sh
+# No deployment configurations needed in the image
+# All configurations are managed externally in the deploy directory
 
 # Expose port
 EXPOSE 8080
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-  CMD wget --quiet --tries=1 --spider http://localhost:8080/health || exit 1
+  CMD curl -f http://127.0.0.1:8080/health || exit 1
 
 # Run the binary
 ENTRYPOINT ["./api"]

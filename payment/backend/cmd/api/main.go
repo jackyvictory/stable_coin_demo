@@ -6,7 +6,6 @@ import (
 	"log"
 	"os"
 	"path/filepath"
-	"time"
 
 	"payment-backend/internal/api"
 	"payment-backend/internal/api/websocket"
@@ -76,7 +75,7 @@ func main() {
 	// Initialize payment service
 	paymentConfig := service.PaymentConfig{
 		ReceiverAddress: cfg.ReceiverAddress,
-		PaymentTimeout:  time.Duration(cfg.PaymentTimeout) * time.Minute,
+		PaymentTimeout:  cfg.PaymentTimeout,
 	}
 
 	paymentService := service.NewPaymentService(repo, bcService, paymentConfig)

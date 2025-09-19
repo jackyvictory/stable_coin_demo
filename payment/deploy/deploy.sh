@@ -433,7 +433,7 @@ upload_config_files() {
     # 上传nginx配置文件
     $SCP_CMD $SCRIPT_DIR/nginx.conf $TARGET_HOST:/tmp/
     # 上传前端nginx配置文件
-    $SCP_CMD $SCRIPT_DIR/frontend-nginx.conf $TARGET_HOST:/tmp/
+    $SCP_CMD $SCRIPT_DIR/../frontend/frontend-nginx.conf $TARGET_HOST:/tmp/
 }
 
 # 部署应用
@@ -533,11 +533,11 @@ EOF
 # 更新Nginx配置
 update_nginx_config() {
     log_step "更新Nginx配置"
-    $SSH_CMD $TARGET_HOST << EOF
-# 上传新的nginx配置文件
-$SCP_CMD $SCRIPT_DIR/nginx.conf \$USER@$TARGET_HOST:/tmp/
+    # 上传新的nginx配置文件
+    $SCP_CMD $SCRIPT_DIR/nginx.conf $TARGET_HOST:/tmp/
 
-# 更新nginx配置
+    # 更新nginx配置
+    $SSH_CMD $TARGET_HOST << EOF
 cd /opt/payment
 mv /tmp/nginx.conf ./nginx.conf
 

@@ -29,9 +29,12 @@ func (r *Repository) CreatePaymentSession(session *models.PaymentSession) error 
 		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 	`
 
-	now := time.Now()
+	now := time.Now().UTC()
 	session.CreatedAt = now
 	session.UpdatedAt = now
+
+	// Ensure we're using UTC time for database storage
+	expiresAtUTC := session.ExpiresAt.UTC()
 
 	result, err := r.db.Exec(
 		query,
@@ -45,7 +48,7 @@ func (r *Repository) CreatePaymentSession(session *models.PaymentSession) error 
 		session.ReceiverAddress,
 		session.Status,
 		session.QRCodeData,
-		session.ExpiresAt,
+		expiresAtUTC,
 		session.CreatedAt,
 		session.UpdatedAt,
 	)
@@ -94,6 +97,17 @@ func (r *Repository) GetPaymentSessionByPaymentID(paymentID string) (*models.Pay
 		&session.CreatedAt,
 		&session.UpdatedAt,
 	)
+
+	// Ensure we're using UTC time after reading from database
+	if err == nil {
+		session.ExpiresAt = session.ExpiresAt.UTC()
+		session.CreatedAt = session.CreatedAt.UTC()
+		session.UpdatedAt = session.UpdatedAt.UTC()
+		if session.ConfirmedAt != nil {
+			confirmedAtUTC := session.ConfirmedAt.UTC()
+			session.ConfirmedAt = &confirmedAtUTC
+		}
+	}
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, nil
@@ -122,7 +136,7 @@ func (r *Repository) UpdatePaymentSessionStatus(paymentID string, status models.
 		transactionHash,
 		blockNumber,
 		confirmedAt,
-		time.Now(),
+		time.Now().UTC(),
 		paymentID,
 	)
 	return err
