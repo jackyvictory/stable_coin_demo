@@ -60,6 +60,14 @@ type PaymentStatusUpdate struct {
 	Token           string `json:"token,omitempty"`
 }
 
+// WebSocketMessageLog represents a logged WebSocket message
+type WebSocketMessageLog struct {
+	Type      string      `json:"type"`
+	Direction string      `json:"direction"` // "in" or "out"
+	Data      interface{} `json:"data,omitempty"`
+	Timestamp time.Time   `json:"timestamp"`
+}
+
 // Service provides blockchain functionality
 type Service struct {
 	client         *ethclient.Client
@@ -80,9 +88,21 @@ type Service struct {
 	reconnectAttempts int
 	maxReconnectAttempts int
 
+	// Connection statistics
+	totalConnectionAttempts int64
+	lastConnectionTime     time.Time
+	lastDisconnectionTime  time.Time
+	connectionErrors       int64
+	activeSubscriptions    int64
+
 	// Payment status channel for WebSocket notifications
 	paymentCh chan<- *PaymentStatusUpdate
 	mu        sync.Mutex // For protecting paymentCh
+
+	// Message logging
+	messageLog []WebSocketMessageLog
+	logMu      sync.RWMutex
+	maxLogSize int
 }
 
 // NewService creates a new blockchain service
@@ -149,8 +169,15 @@ func NewService(config Config, paymentCh chan<- *PaymentStatusUpdate) (*Service,
 		currentEndpointIndex: 0,
 		reconnectAttempts: 0,
 		maxReconnectAttempts: 3,
+		totalConnectionAttempts: 0,
+		lastConnectionTime: time.Time{},
+		lastDisconnectionTime: time.Time{},
+		connectionErrors: 0,
+		activeSubscriptions: 0,
 		paymentCh:      paymentCh,
 		mu:             sync.Mutex{},
+		messageLog:     make([]WebSocketMessageLog, 0),
+		maxLogSize:     1000, // Keep last 1000 messages
 	}
 
 	// Connect to WebSocket if URL is provided
@@ -298,16 +325,21 @@ func (s *Service) connectToEndpoint(endpoint WebSocketEndpoint) bool {
 	dialer := websocket.DefaultDialer
 	dialer.HandshakeTimeout = time.Duration(endpoint.Timeout) * time.Millisecond
 
+	// Increment connection attempts
+	s.totalConnectionAttempts++
+
 	// Dial the WebSocket connection
 	conn, _, err := dialer.Dial(endpoint.URL, nil)
 	if err != nil {
 		fmt.Printf("[Blockchain WebSocket] Failed to connect to WebSocket endpoint %s: %v\n", endpoint.Name, err)
+		s.connectionErrors++
 		return false
 	}
 
 	s.wsMu.Lock()
 	s.wsConn = conn
 	s.isConnected = true
+	s.lastConnectionTime = time.Now()
 	s.wsMu.Unlock()
 
 	fmt.Printf("[Blockchain WebSocket] WebSocket connected successfully to %s\n", endpoint.Name)
@@ -352,8 +384,14 @@ func (s *Service) sendPing() {
 		"id":      time.Now().Unix(),
 	}
 
+	// Log the outgoing message
+	s.logMessage("ping", "out", pingMsg)
+
 	if err := s.wsConn.WriteJSON(pingMsg); err != nil {
 		fmt.Printf("[Blockchain WebSocket] Failed to send ping: %v\n", err)
+		s.logMessage("ping_error", "out", map[string]interface{}{
+			"error": err.Error(),
+		})
 		s.isConnected = false
 
 		// Attempt to reconnect with failover support
@@ -371,6 +409,7 @@ func (s *Service) listenWebSocket() {
 		if conn == nil {
 			// Connection lost, attempt to reconnect
 			fmt.Println("WebSocket connection lost, attempting to reconnect...")
+			s.lastDisconnectionTime = time.Now()
 			go s.connectWebSocketWithFailover()
 			return
 		}
@@ -381,6 +420,7 @@ func (s *Service) listenWebSocket() {
 			fmt.Printf("[Blockchain WebSocket] WebSocket read error: %v\n", err)
 			s.wsMu.Lock()
 			s.isConnected = false
+			s.lastDisconnectionTime = time.Now()
 			s.wsMu.Unlock()
 
 			// Attempt to reconnect with failover support
@@ -398,14 +438,25 @@ func (s *Service) processWebSocketMessage(message []byte) {
 	var msg map[string]interface{}
 	if err := json.Unmarshal(message, &msg); err != nil {
 		fmt.Printf("[Blockchain WebSocket] Failed to parse WebSocket message: %v\n", err)
+		s.logMessage("parse_error", "in", map[string]interface{}{
+			"error": err.Error(),
+			"raw":   string(message),
+		})
 		return
 	}
+
+	// Log the incoming message
+	s.logMessage("message_received", "in", msg)
 
 	// Handle subscription responses
 	if id, ok := msg["id"].(float64); ok {
 		if result, ok := msg["result"].(string); ok {
 			// This is a subscription confirmation
 			fmt.Printf("[Blockchain WebSocket] Subscription confirmed: %s (id: %.0f)\n", result, id)
+			s.logMessage("subscription_confirmed", "in", map[string]interface{}{
+				"subscriptionId": result,
+				"requestId":      id,
+			})
 			// Store subscription ID for later reference
 			s.subscriptionMu.Lock()
 			s.wsSubscriptions[result] = fmt.Sprintf("subscription-%.0f", id)
@@ -417,6 +468,7 @@ func (s *Service) processWebSocketMessage(message []byte) {
 	if method, ok := msg["method"].(string); ok && method == "eth_subscription" {
 		if params, ok := msg["params"].(map[string]interface{}); ok {
 			if result, ok := params["result"].(map[string]interface{}); ok {
+				s.logMessage("transfer_event", "in", result)
 				s.handleTransferEvent(result)
 			}
 		}
@@ -425,6 +477,10 @@ func (s *Service) processWebSocketMessage(message []byte) {
 	// Handle RPC responses (like ping/pong)
 	if result, ok := msg["result"]; ok && msg["id"] != nil {
 		fmt.Printf("[Blockchain WebSocket] RPC response received: %v\n", result)
+		s.logMessage("rpc_response", "in", map[string]interface{}{
+			"result": result,
+			"id":     msg["id"],
+		})
 	}
 }
 
@@ -618,9 +674,24 @@ func (s *Service) subscribeToTransferEvents(tokenAddress common.Address, tokenSy
 
 	fmt.Printf("[Blockchain WebSocket] Subscribing to Transfer events for %s (%s)\n", tokenSymbol, tokenAddress.Hex())
 
+	// Log the outgoing subscription message
+	s.logMessage("subscribe_transfer", "out", map[string]interface{}{
+		"tokenSymbol": tokenSymbol,
+		"tokenAddress": tokenAddress.Hex(),
+		"message": subscribeMsg,
+	})
+
 	if err := s.wsConn.WriteJSON(subscribeMsg); err != nil {
+		s.logMessage("subscribe_error", "out", map[string]interface{}{
+			"tokenSymbol": tokenSymbol,
+			"tokenAddress": tokenAddress.Hex(),
+			"error": err.Error(),
+		})
 		return fmt.Errorf("failed to send subscription request: %w", err)
 	}
+
+	// Update subscription count
+	s.activeSubscriptions++
 
 	return nil
 }
@@ -903,11 +974,78 @@ func (s *Service) IsWebSocketConnected() bool {
 	return s.isConnected
 }
 
+// GetConnectionStats returns blockchain WebSocket connection statistics
+func (s *Service) GetConnectionStats() map[string]interface{} {
+	s.wsMu.Lock()
+	defer s.wsMu.Unlock()
+
+	stats := make(map[string]interface{})
+	stats["isConnected"] = s.isConnected
+	stats["totalConnectionAttempts"] = s.totalConnectionAttempts
+	stats["reconnectAttempts"] = s.reconnectAttempts
+	stats["connectionErrors"] = s.connectionErrors
+	stats["activeSubscriptions"] = s.activeSubscriptions
+	stats["lastConnectionTime"] = s.lastConnectionTime
+	stats["lastDisconnectionTime"] = s.lastDisconnectionTime
+	stats["currentEndpointIndex"] = s.currentEndpointIndex
+
+	// Add endpoint information
+	if s.currentEndpointIndex < len(s.wsEndpoints) {
+		stats["currentEndpoint"] = s.wsEndpoints[s.currentEndpointIndex].Name
+		stats["currentEndpointURL"] = s.wsEndpoints[s.currentEndpointIndex].URL
+	}
+
+	return stats
+}
+
 // SetPaymentChannel sets the payment status update channel
 func (s *Service) SetPaymentChannel(paymentCh chan<- *PaymentStatusUpdate) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.paymentCh = paymentCh
+}
+
+// logMessage adds a message to the message log
+func (s *Service) logMessage(msgType, direction string, data interface{}) {
+	s.logMu.Lock()
+	defer s.logMu.Unlock()
+
+	logEntry := WebSocketMessageLog{
+		Type:      msgType,
+		Direction: direction,
+		Data:      data,
+		Timestamp: time.Now(),
+	}
+
+	// Add to log
+	s.messageLog = append(s.messageLog, logEntry)
+
+	// Trim log if it exceeds max size
+	if len(s.messageLog) > s.maxLogSize {
+		// Keep the most recent entries
+		startIndex := len(s.messageLog) - s.maxLogSize
+		s.messageLog = s.messageLog[startIndex:]
+	}
+}
+
+// GetMessageLog returns the message log
+func (s *Service) GetMessageLog(limit int) []WebSocketMessageLog {
+	s.logMu.RLock()
+	defer s.logMu.RUnlock()
+
+	// If limit is 0 or negative, return all messages
+	if limit <= 0 || limit >= len(s.messageLog) {
+		// Return a copy of the slice
+		result := make([]WebSocketMessageLog, len(s.messageLog))
+		copy(result, s.messageLog)
+		return result
+	}
+
+	// Return the most recent 'limit' messages
+	startIndex := len(s.messageLog) - limit
+	result := make([]WebSocketMessageLog, limit)
+	copy(result, s.messageLog[startIndex:])
+	return result
 }
 
 // Close closes the blockchain connections

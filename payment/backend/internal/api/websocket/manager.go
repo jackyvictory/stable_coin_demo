@@ -56,6 +56,15 @@ type ErrorMessageData struct {
 	Message string `json:"message"`
 }
 
+// WebSocketMessageLog represents a logged WebSocket message
+type WebSocketMessageLog struct {
+	Type      MessageType    `json:"type"`
+	PaymentID string         `json:"paymentId"`
+	Direction string         `json:"direction"` // "in" or "out"
+	Data      interface{}    `json:"data,omitempty"`
+	Timestamp time.Time      `json:"timestamp"`
+}
+
 
 // Manager handles WebSocket connections
 type Manager struct {
@@ -65,6 +74,19 @@ type Manager struct {
 	mu          sync.RWMutex
 	paymentCh   chan *blockchain.PaymentStatusUpdate
 	stopCh      chan struct{}
+
+	// Connection statistics
+	totalConnections     int64
+	activeConnections    int64
+	connectionErrors     int64
+	reconnectAttempts    int64
+	lastConnectionTime   time.Time
+	lastDisconnectionTime time.Time
+
+	// Message logging
+	messageLog []WebSocketMessageLog
+	logMu      sync.RWMutex
+	maxLogSize int
 }
 
 // Connection represents a WebSocket connection
@@ -88,6 +110,14 @@ func NewManager(paymentService *service.PaymentService) *Manager {
 				return true // Allow all origins for development
 			},
 		},
+		totalConnections:      0,
+		activeConnections:     0,
+		connectionErrors:      0,
+		reconnectAttempts:     0,
+		lastConnectionTime:    time.Time{},
+		lastDisconnectionTime: time.Time{},
+		messageLog:            make([]WebSocketMessageLog, 0),
+		maxLogSize:            1000, // Keep last 1000 messages
 	}
 
 	// Start payment status listener
@@ -140,6 +170,67 @@ func (m *Manager) GetPaymentChannel() chan<- *blockchain.PaymentStatusUpdate {
 	return m.paymentCh
 }
 
+// logMessage adds a message to the message log
+func (m *Manager) logMessage(msgType MessageType, paymentID, direction string, data interface{}) {
+	m.logMu.Lock()
+	defer m.logMu.Unlock()
+
+	logEntry := WebSocketMessageLog{
+		Type:      msgType,
+		PaymentID: paymentID,
+		Direction: direction,
+		Data:      data,
+		Timestamp: time.Now(),
+	}
+
+	// Add to log
+	m.messageLog = append(m.messageLog, logEntry)
+
+	// Trim log if it exceeds max size
+	if len(m.messageLog) > m.maxLogSize {
+		// Keep the most recent entries
+		startIndex := len(m.messageLog) - m.maxLogSize
+		m.messageLog = m.messageLog[startIndex:]
+	}
+}
+
+// GetMessageLog returns the message log
+func (m *Manager) GetMessageLog(limit int) []WebSocketMessageLog {
+	m.logMu.RLock()
+	defer m.logMu.RUnlock()
+
+	// If limit is 0 or negative, return all messages
+	if limit <= 0 || limit >= len(m.messageLog) {
+		// Return a copy of the slice
+		result := make([]WebSocketMessageLog, len(m.messageLog))
+		copy(result, m.messageLog)
+		return result
+	}
+
+	// Return the most recent 'limit' messages
+	startIndex := len(m.messageLog) - limit
+	result := make([]WebSocketMessageLog, limit)
+	copy(result, m.messageLog[startIndex:])
+	return result
+}
+
+// GetConnectionStats returns WebSocket connection statistics
+func (m *Manager) GetConnectionStats() map[string]interface{} {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	stats := make(map[string]interface{})
+	stats["totalConnections"] = m.totalConnections
+	stats["activeConnections"] = m.activeConnections
+	stats["connectionErrors"] = m.connectionErrors
+	stats["reconnectAttempts"] = m.reconnectAttempts
+	stats["lastConnectionTime"] = m.lastConnectionTime
+	stats["lastDisconnectionTime"] = m.lastDisconnectionTime
+	stats["currentConnections"] = len(m.connections)
+
+	return stats
+}
+
 // HandleConnection handles a new WebSocket connection
 func (m *Manager) HandleConnection(c *gin.Context) {
 	paymentID := c.Param("paymentId")
@@ -171,9 +262,12 @@ func (m *Manager) HandleConnection(c *gin.Context) {
 		lastPing:  time.Now(),
 	}
 
-	// Add connection to manager
+	// Add connection to manager and update statistics
 	m.mu.Lock()
 	m.connections[paymentID] = connection
+	m.totalConnections++
+	m.activeConnections++
+	m.lastConnectionTime = time.Now()
 	m.mu.Unlock()
 
 	// Send connection acknowledgment
@@ -218,6 +312,9 @@ func (m *Manager) handleMessages(conn *Connection, payment *models.PaymentSessio
 			continue
 		}
 
+		// Log the incoming message
+		m.logMessage(msg.Type, conn.paymentID, "in", msg.Data)
+
 		// Handle ping messages
 		if msg.Type == PingMsg {
 			log.Printf("[Frontend WebSocket] Received ping from payment %s, sending pong", conn.paymentID)
@@ -243,6 +340,9 @@ func (m *Manager) sendMessage(conn *Connection, msg *WebSocketMessage) error {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
+	// Log the outgoing message
+	m.logMessage(msg.Type, conn.paymentID, "out", msg.Data)
+
 	return conn.conn.WriteJSON(msg)
 }
 
@@ -255,6 +355,10 @@ func (m *Manager) closeConnection(conn *Connection) {
 	conn.closeOnce.Do(func() {
 		// Remove from connections map
 		delete(m.connections, conn.paymentID)
+
+		// Update statistics
+		m.activeConnections--
+		m.lastDisconnectionTime = time.Now()
 
 		// Close WebSocket connection
 		conn.conn.Close()

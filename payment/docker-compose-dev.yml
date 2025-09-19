@@ -9,6 +9,7 @@ services:
       - "8080:8080"
     volumes:
       - ./backend/data:/app/data
+      - ./frontend:/app/frontend
     environment:
       - SERVER_PORT=8080
       - DB_PATH=/app/data/payment.db

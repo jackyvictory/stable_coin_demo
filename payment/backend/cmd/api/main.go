@@ -116,6 +116,7 @@ func setupRoutes(router *gin.Engine, handler *api.Handler, wsManager *websocket.
 		})
 	})
 
+
 	// Health check endpoint
 	router.GET("/health", func(c *gin.Context) {
 		c.JSON(200, gin.H{
@@ -155,6 +156,8 @@ func setupRoutes(router *gin.Engine, handler *api.Handler, wsManager *websocket.
 			stats.GET("/payments", handler.GetPaymentStats)
 			stats.GET("/monitoring", handler.GetMonitoringStats)
 			stats.GET("/system", handler.GetSystemStats)
+			stats.GET("/websocket", handler.GetWebSocketStats)
+			stats.GET("/websocket/messages", handler.GetWebSocketMessages)
 		}
 	}
 }

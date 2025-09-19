@@ -29,6 +29,8 @@ type BlockchainService interface {
 	GetTokenBalance(ctx context.Context, tokenAddress, ownerAddress common.Address) (*big.Int, error)
 	GetLatestBlockNumber(ctx context.Context) (*big.Int, error)
 	StartPaymentMonitoringWithCallback(paymentID, tokenSymbol string, expectedAmount *big.Int, timeout time.Duration, callback blockchain.PaymentCallback) error
+	GetConnectionStats() map[string]interface{}
+	GetMessageLog(limit int) []blockchain.WebSocketMessageLog
 	Close()
 }
 
@@ -173,13 +175,39 @@ func (s *PaymentService) GetSystemStats(ctx context.Context) (*models.SystemStat
 }
 
 // UpdatePaymentStatus updates the status of a payment session
-func (s *PaymentService) UpdatePaymentStatus(ctx context.Context, paymentID string, status models.PaymentStatus, 
+func (s *PaymentService) UpdatePaymentStatus(ctx context.Context, paymentID string, status models.PaymentStatus,
 	senderAddress *string, transactionHash *string, blockNumber *int64, confirmedAt *time.Time) error {
-	
+
 	if err := s.repo.UpdatePaymentSessionStatus(paymentID, status, senderAddress, transactionHash, blockNumber, confirmedAt); err != nil {
 		return fmt.Errorf("failed to update payment status: %w", err)
 	}
 	return nil
+}
+
+// GetBlockchainConnectionStats retrieves blockchain connection statistics
+func (s *PaymentService) GetBlockchainConnectionStats() map[string]interface{} {
+	// Check if the blockchain service has the GetConnectionStats method
+	if bcServiceWithStats, ok := s.bcService.(interface {
+		GetConnectionStats() map[string]interface{}
+	}); ok {
+		return bcServiceWithStats.GetConnectionStats()
+	}
+
+	// Return empty stats if method not available
+	return make(map[string]interface{})
+}
+
+// GetBlockchainMessageLog retrieves blockchain WebSocket message logs
+func (s *PaymentService) GetBlockchainMessageLog(limit int) []blockchain.WebSocketMessageLog {
+	// Check if the blockchain service has the GetMessageLog method
+	if bcServiceWithLogs, ok := s.bcService.(interface {
+		GetMessageLog(limit int) []blockchain.WebSocketMessageLog
+	}); ok {
+		return bcServiceWithLogs.GetMessageLog(limit)
+	}
+
+	// Return empty log if method not available
+	return make([]blockchain.WebSocketMessageLog, 0)
 }
 
 // monitorPayment monitors a payment session for completion

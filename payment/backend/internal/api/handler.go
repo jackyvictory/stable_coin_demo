@@ -3,6 +3,8 @@ package api
 import (
 	"fmt"
 	"net/http"
+	"sort"
+	"strconv"
 	"time"
 
 	"payment-backend/internal/config"
@@ -285,10 +287,22 @@ func (h *Handler) GetMonitoringStats(c *gin.Context) {
 		return
 	}
 
+	// Get WebSocket connection stats
+	wsStats := h.wsManager.GetConnectionStats()
+
+	// Convert WebSocket stats to the expected format
+	wsConnections := make(map[string]int)
+	wsConnections["total"] = int(wsStats["totalConnections"].(int64))
+	wsConnections["active"] = int(wsStats["activeConnections"].(int64))
+	wsConnections["errors"] = int(wsStats["connectionErrors"].(int64))
+
+	// Get blockchain connection stats
+	blockchainStats := h.paymentService.GetBlockchainConnectionStats()
+
 	// Convert models.MonitoringStats to MonitoringStatsResponse
 	response := MonitoringStatsResponse{
-		WebsocketConnections:  stats.WebsocketConnections,
-		BlockchainMonitoring:  stats.BlockchainMonitoring,
+		WebsocketConnections:  wsConnections,
+		BlockchainMonitoring:  blockchainStats,
 		ValidationPerformance: stats.ValidationPerformance,
 	}
 
@@ -324,6 +338,107 @@ func (h *Handler) GetSystemStats(c *gin.Context) {
 		ErrorRate:          stats.ErrorRate,
 		DatabaseHealth:     stats.DatabaseHealth,
 		BlockchainConnection: stats.BlockchainConnection,
+	}
+
+	c.JSON(http.StatusOK, response)
+}
+
+// GetWebSocketStats retrieves WebSocket connection statistics
+// @Summary Get WebSocket connection statistics
+// @Description Retrieve WebSocket connection statistics for both frontend and blockchain
+// @Tags statistics
+// @Produce json
+// @Success 200 {object} WebSocketStatsResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /api/v1/stats/websocket [get]
+func (h *Handler) GetWebSocketStats(c *gin.Context) {
+	// Get frontend WebSocket connection stats from WebSocket manager
+	frontendStats := h.wsManager.GetConnectionStats()
+
+	// Get blockchain WebSocket connection stats from payment service
+	blockchainStats := h.paymentService.GetBlockchainConnectionStats()
+
+	// Create response
+	response := WebSocketStatsResponse{
+		Frontend:   frontendStats,
+		Blockchain: blockchainStats,
+	}
+
+	c.JSON(http.StatusOK, response)
+}
+
+// GetWebSocketMessages retrieves WebSocket message logs
+// @Summary Get WebSocket message logs
+// @Description Retrieve recent WebSocket message logs from both frontend and blockchain
+// @Tags statistics
+// @Produce json
+// @Param limit query int false "Number of messages to retrieve (default: 50, max: 1000)"
+// @Success 200 {object} WebSocketMessagesResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /api/v1/stats/websocket/messages [get]
+func (h *Handler) GetWebSocketMessages(c *gin.Context) {
+	// Get limit parameter, default to 50, max 1000
+	limit := 50
+	if limitParam := c.Query("limit"); limitParam != "" {
+		if parsedLimit, err := strconv.Atoi(limitParam); err == nil {
+			if parsedLimit > 0 && parsedLimit <= 1000 {
+				limit = parsedLimit
+			}
+		}
+	}
+
+	// Get message logs from WebSocket manager (frontend messages)
+	frontendMessages := h.wsManager.GetMessageLog(limit)
+
+	// Get message logs from blockchain service (blockchain messages)
+	blockchainMessages := h.paymentService.GetBlockchainMessageLog(limit)
+
+	// Combine and sort messages by timestamp (newest first)
+	allMessages := make([]interface{}, 0, len(frontendMessages)+len(blockchainMessages))
+
+	// Add frontend messages with source identifier
+	for _, msg := range frontendMessages {
+		enrichedMsg := map[string]interface{}{
+			"source":      "frontend",
+			"type":        msg.Type,
+			"paymentId":   msg.PaymentID,
+			"direction":   msg.Direction,
+			"data":        msg.Data,
+			"timestamp":   msg.Timestamp,
+		}
+		allMessages = append(allMessages, enrichedMsg)
+	}
+
+	// Add blockchain messages with source identifier
+	for _, msg := range blockchainMessages {
+		enrichedMsg := map[string]interface{}{
+			"source":    "blockchain",
+			"type":      msg.Type,
+			"direction": msg.Direction,
+			"data":      msg.Data,
+			"timestamp": msg.Timestamp,
+		}
+		allMessages = append(allMessages, enrichedMsg)
+	}
+
+	// Sort messages by timestamp (newest first)
+	sort.Slice(allMessages, func(i, j int) bool {
+		msgI := allMessages[i].(map[string]interface{})
+		msgJ := allMessages[j].(map[string]interface{})
+		timeI := msgI["timestamp"].(time.Time)
+		timeJ := msgJ["timestamp"].(time.Time)
+		return timeI.After(timeJ)
+	})
+
+	// Limit to requested number of messages
+	if len(allMessages) > limit && limit > 0 {
+		allMessages = allMessages[:limit]
+	}
+
+	// Create response
+	response := WebSocketMessagesResponse{
+		Messages: allMessages,
+		Count:    len(allMessages),
 	}
 
 	c.JSON(http.StatusOK, response)
@@ -400,8 +515,8 @@ type PaymentStatsResponse struct {
 // MonitoringStatsResponse represents the response for monitoring statistics
 type MonitoringStatsResponse struct {
 	WebsocketConnections   map[string]int `json:"websocket_connections"`
-	BlockchainMonitoring   map[string]interface{} `json:"blockchain_monitoring"`
-	ValidationPerformance  map[string]interface{} `json:"validation_performance"`
+	BlockchainMonitoring   map[string]any `json:"blockchain_monitoring"`
+	ValidationPerformance  map[string]any `json:"validation_performance"`
 }
 
 // SystemStatsResponse represents the response for system statistics
@@ -414,6 +529,18 @@ type SystemStatsResponse struct {
 	ErrorRate          float64 `json:"error_rate"`
 	DatabaseHealth     string  `json:"database_health"`
 	BlockchainConnection string `json:"blockchain_connection"`
+}
+
+// WebSocketStatsResponse represents the response for WebSocket statistics
+type WebSocketStatsResponse struct {
+	Frontend   map[string]interface{} `json:"frontend"`
+	Blockchain map[string]interface{} `json:"blockchain"`
+}
+
+// WebSocketMessagesResponse represents the response for WebSocket message logs
+type WebSocketMessagesResponse struct {
+	Messages []interface{} `json:"messages"`
+	Count    int           `json:"count"`
 }
 
 // HealthResponse represents the response for health check
