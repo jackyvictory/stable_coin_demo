@@ -110,6 +110,8 @@ networks ◄─────────────────┐
 - `GET /api/v1/stats/payments` - 获取支付统计数据
 - `GET /api/v1/stats/monitoring` - 获取监控性能数据
 - `GET /api/v1/stats/system` - 获取系统健康状态
+- `GET /api/v1/stats/websocket` - 获取WebSocket连接统计信息
+- `GET /api/v1/stats/websocket/messages` - 获取WebSocket消息日志
 - `GET /health` - 健康检查端点
 
 ## 5. 区块链接口设计
@@ -297,6 +299,67 @@ networks ◄─────────────────┐
 }
 ```
 
+#### WebSocket连接统计
+`GET /api/v1/stats/websocket`
+```json
+{
+  "frontend": {
+    "totalConnections": 150,
+    "activeConnections": 3,
+    "connectionErrors": 5,
+    "reconnectAttempts": 2,
+    "lastConnectionTime": "2023-12-01T10:30:00Z",
+    "lastDisconnectionTime": "2023-12-01T09:15:00Z"
+  },
+  "blockchain": {
+    "isConnected": true,
+    "currentEndpoint": "wss://bsc-ws-node.nariox.org",
+    "totalConnectionAttempts": 25,
+    "reconnectAttempts": 3,
+    "activeSubscriptions": 3,
+    "lastConnectionTime": "2023-12-01T10:00:00Z",
+    "lastDisconnectionTime": "2023-12-01T08:30:00Z"
+  }
+}
+```
+
+#### WebSocket消息日志
+`GET /api/v1/stats/websocket/messages?limit=50`
+```json
+{
+  "messages": [
+    {
+      "source": "frontend",
+      "type": "payment_status_update",
+      "paymentId": "pay_1234567890",
+      "direction": "out",
+      "data": {
+        "status": "paid",
+        "transactionHash": "0x1234567890abcdef...",
+        "blockNumber": 12345678,
+        "confirmations": 3,
+        "amount": "10.00",
+        "token": "USDT"
+      },
+      "timestamp": "2023-12-01T10:30:00Z"
+    },
+    {
+      "source": "blockchain",
+      "type": "transfer_event",
+      "direction": "in",
+      "data": {
+        "from": "0xabcdef1234567890...",
+        "to": "0xe27577B0e3920cE3...",
+        "value": "10000000000000000000",
+        "token": "USDT"
+      },
+      "timestamp": "2023-12-01T10:29:45Z"
+    }
+  ],
+  "count": 2
+}
+```
+
 ### 11.3 监控仪表板设计
 
 #### 实时支付监控视图
@@ -322,6 +385,75 @@ networks ◄─────────────────┐
 - 系统错误率异常告警
 - 区块链连接中断告警
 - 性能指标异常告警
+
+## 14. WebSocket监控功能更新
+
+### 14.1 新增API端点
+
+#### WebSocket统计信息
+- `GET /api/v1/stats/websocket` - 获取WebSocket连接统计信息
+  - 前端WebSocket连接状态
+  - 区块链WebSocket连接状态
+
+#### WebSocket消息日志
+- `GET /api/v1/stats/websocket/messages` - 获取WebSocket消息日志
+  - 支持limit参数限制返回消息数量
+  - 返回前端和区块链WebSocket消息
+  - 按时间倒序排列
+
+### 14.2 前端监控页面
+
+#### 独立监控页面
+- 创建独立的WebSocket监控页面 (`websocket-monitor.html`)
+- 通过 `/src/websocket-monitor.html` 访问
+- 实时显示前端和区块链WebSocket连接状态
+- 分别展示前端和区块链WebSocket消息日志
+- 提供手动刷新和自动刷新功能
+
+#### Vue组件监控
+- 创建WebSocket状态监控Vue组件 (`WebSocketStatusMonitor.vue`)
+- 在管理界面中集成WebSocket监控功能
+- 提供前端和区块链WebSocket连接状态展示
+- 分别显示前端和区块链WebSocket消息日志
+
+### 14.3 消息日志功能
+
+#### 前端WebSocket消息日志
+- 记录所有前端WebSocket连接的消息
+- 包括ping/pong心跳消息
+- 包括支付状态更新消息
+- 包括连接建立和断开事件
+
+#### 区块链WebSocket消息日志
+- 记录所有区块链WebSocket连接的消息
+- 包括RPC请求和响应
+- 包括订阅确认消息
+- 包括代币转账事件
+- 包括连接建立和断开事件
+
+### 14.4 监控页面特性
+
+#### 实时数据刷新
+- 每10-30秒自动刷新监控数据
+- 支持手动刷新按钮
+- 显示最后更新时间
+
+#### 连接状态指示
+- 彩色状态指示灯显示连接状态
+- 详细的连接统计信息
+- 连接和断开时间戳
+
+#### 消息分类显示
+- 前端WebSocket消息单独显示区域
+- 区块链WebSocket消息单独显示区域
+- 消息按时间倒序排列
+- 支持消息类型、方向筛选
+
+#### 消息详情展示
+- 完整的消息数据结构展示
+- JSON格式化显示
+- 时间戳显示
+- 消息方向标识（输入/输出）
 
 ## 12. WebSocket实时支付状态推送
 
@@ -454,7 +586,8 @@ frontend/src/
 │   ├── ProductSelection.vue # 产品选择页面
 │   ├── PaymentPage.vue      # 支付方式选择页面
 │   ├── QrPaymentPage.vue    # 二维码支付和监控页面
-│   └── PaymentSuccess.vue   # 支付成功页面
+│   ├── PaymentSuccess.vue   # 支付成功页面
+│   └── WebSocketStatusMonitor.vue # WebSocket状态监控组件
 ├── router/                  # 路由配置
 ├── store/                   # 状态管理(如需要)
 ├── App.vue                  # 根组件

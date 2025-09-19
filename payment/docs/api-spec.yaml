@@ -208,6 +208,52 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
 
+  /api/v1/stats/websocket:
+    get:
+      summary: Get WebSocket connection statistics
+      description: Retrieve WebSocket connection statistics for both frontend and blockchain
+      responses:
+        '200':
+          description: WebSocket statistics retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WebSocketStatsResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/v1/stats/websocket/messages:
+    get:
+      summary: Get WebSocket message logs
+      description: Retrieve recent WebSocket message logs from both frontend and blockchain
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 1000
+            default: 50
+          description: Number of messages to retrieve (default: 50, max: 1000)
+      responses:
+        '200':
+          description: WebSocket messages retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WebSocketMessagesResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
   /health:
     get:
       summary: Health check
@@ -539,6 +585,67 @@ components:
         blockchain_connection:
           type: string
           example: "connected"
+
+    WebSocketStatsResponse:
+      type: object
+      properties:
+        frontend:
+          type: object
+          description: Frontend WebSocket connection statistics
+          example:
+            totalConnections: 150
+            activeConnections: 3
+            connectionErrors: 5
+            reconnectAttempts: 2
+            lastConnectionTime: "2023-12-01T10:30:00Z"
+            lastDisconnectionTime: "2023-12-01T09:15:00Z"
+        blockchain:
+          type: object
+          description: Blockchain WebSocket connection statistics
+          example:
+            isConnected: true
+            currentEndpoint: "wss://bsc-ws-node.nariox.org"
+            totalConnectionAttempts: 25
+            reconnectAttempts: 3
+            activeSubscriptions: 3
+            lastConnectionTime: "2023-12-01T10:00:00Z"
+            lastDisconnectionTime: "2023-12-01T08:30:00Z"
+
+    WebSocketMessagesResponse:
+      type: object
+      properties:
+        messages:
+          type: array
+          items:
+            $ref: '#/components/schemas/WebSocketMessageLog'
+        count:
+          type: integer
+          example: 10
+
+    WebSocketMessageLog:
+      type: object
+      properties:
+        source:
+          type: string
+          enum: [frontend, blockchain]
+          example: "frontend"
+        type:
+          type: string
+          example: "payment_status_update"
+        paymentId:
+          type: string
+          example: "pay_1234567890"
+        direction:
+          type: string
+          enum: [in, out]
+          example: "out"
+        data:
+          type: object
+          description: Message payload data
+        timestamp:
+          type: string
+          format: date-time
+          example: "2023-12-01T10:30:00Z"
 
     HealthResponse:
       type: object
