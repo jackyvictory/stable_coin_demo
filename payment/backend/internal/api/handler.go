@@ -623,7 +623,7 @@ func toNetworksResponse(networks []*models.Network) []*NetworkResponse {
 }
 
 // DebugSimulatePayment simulates a payment success for testing purposes
-// @Summary Simulate payment success (Debug only)
+// @Summary Simulate payment success
 // @Description Sends a payment success message via WebSocket for testing
 // @Tags debug
 // @Accept json
@@ -631,19 +631,9 @@ func toNetworksResponse(networks []*models.Network) []*NetworkResponse {
 // @Param paymentId path string true "Payment ID"
 // @Success 200 {object} map[string]interface{}
 // @Failure 400 {object} ErrorResponse
-// @Failure 403 {object} ErrorResponse
 // @Failure 500 {object} ErrorResponse
 // @Router /debug/payments/{paymentId}/simulate-success [post]
 func (h *Handler) DebugSimulatePayment(c *gin.Context) {
-	// Only allow in debug mode
-	if !h.config.DebugMode {
-		c.JSON(http.StatusForbidden, ErrorResponse{
-			Code:    http.StatusForbidden,
-			Message: "Debug endpoints are not available in production",
-		})
-		return
-	}
-
 	paymentID := c.Param("paymentId")
 	if paymentID == "" {
 		c.JSON(http.StatusBadRequest, ErrorResponse{
