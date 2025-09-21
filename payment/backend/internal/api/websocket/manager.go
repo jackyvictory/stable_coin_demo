@@ -406,6 +406,9 @@ func (m *Manager) heartbeat(conn *Connection) {
 				m.closeConnection(conn)
 				return
 			}
+		case <-m.stopCh:
+			// Stop heartbeat when manager is closing
+			return
 		}
 	}
 }

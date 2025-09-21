@@ -278,9 +278,21 @@ export default {
       try {
         this.paymentStatus = 'connecting'
         // Use relative path for WebSocket connection to work in both development and production
-        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
-        const host = window.location.host
-        this.websocket = new WebSocket(`${protocol}//${host}/ws/payments/${this.paymentId}`)
+        // In development, frontend runs on port 3000 and backend on port 8080
+        // In production, both run on the same domain
+        let wsUrl;
+        if (process.env.NODE_ENV === 'development') {
+          // In development, point to backend port
+          const backendHost = window.location.hostname + ':8080';
+          const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+          wsUrl = `${protocol}//${backendHost}/ws/payments/${this.paymentId}`;
+        } else {
+          // In production, use the same host
+          const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+          const host = window.location.host;
+          wsUrl = `${protocol}//${host}/ws/payments/${this.paymentId}`;
+        }
+        this.websocket = new WebSocket(wsUrl);
 
         this.websocket.onopen = () => {
           console.log('WebSocket connected')
@@ -291,6 +303,12 @@ export default {
 
         this.websocket.onmessage = (event) => {
           const message = JSON.parse(event.data)
+
+          // Handle connection acknowledgment
+          if (message.type === 'connection_ack') {
+            console.log('WebSocket connection acknowledged')
+            this.paymentStatus = 'waiting'
+          }
 
           // Handle payment status update messages
           if (message.type === 'payment_status_update') {
