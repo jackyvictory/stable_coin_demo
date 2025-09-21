@@ -12,6 +12,8 @@ servers:
     description: Development server
   - url: https://api.example.com
     description: Production server
+  - url: https://demo.ctbz.xyz
+    description: Demo server
 
 paths:
   /api/v1/payments:
@@ -46,8 +48,8 @@ paths:
 
   /api/v1/payments/{paymentId}:
     get:
-      summary: Get payment session status
-      description: Retrieve the current status of a payment session
+      summary: Get payment session status with blockchain validation
+      description: Retrieve the current status of a payment session, automatically checking blockchain status for pending payments
       parameters:
         - name: paymentId
           in: path
@@ -75,49 +77,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
 
-  /api/v1/payments/{paymentId}/process:
-    post:
-      summary: Process payment
-      description: Process a payment by validating the transaction hash
-      parameters:
-        - name: paymentId
-          in: path
-          required: true
-          schema:
-            type: string
-          description: Unique identifier of the payment session
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/ProcessPaymentRequest'
-      responses:
-        '200':
-          description: Payment processed successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/PaymentSessionResponse'
-        '400':
-          description: Invalid request data
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '404':
-          description: Payment session not found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '500':
-          description: Internal server error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-
+  
   /api/v1/tokens:
     get:
       summary: Get supported tokens
@@ -239,7 +199,7 @@ paths:
             minimum: 1
             maximum: 1000
             default: 50
-          description: Number of messages to retrieve (default: 50, max: 1000)
+          description: Number of messages to retrieve (default 50, max 1000)
       responses:
         '200':
           description: WebSocket messages retrieved successfully
@@ -328,16 +288,7 @@ components:
           example: "0xe27577B0e3920cE35f100f66430de0108cb78a04"
           description: Receiver wallet address
 
-    ProcessPaymentRequest:
-      type: object
-      required:
-        - transactionHash
-      properties:
-        transactionHash:
-          type: string
-          example: "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef"
-          description: Transaction hash to validate
-
+    
     PaymentSessionResponse:
       type: object
       properties:
@@ -464,127 +415,96 @@ components:
       properties:
         total_payments:
           type: integer
-          example: 1250
+          example: 0
         successful_payments:
           type: integer
-          example: 1180
+          example: 0
         failed_payments:
           type: integer
-          example: 70
+          example: 0
         success_rate:
           type: number
           format: float
-          example: 94.4
+          example: 0.0
         payments_by_token:
           type: object
           additionalProperties:
             type: integer
-          example:
-            USDT: 520
-            USDC: 430
-            BUSD: 300
+          example: {}
         payments_by_period:
           type: object
-          properties:
-            "24h":
-              type: integer
-              example: 45
-            "7d":
-              type: integer
-              example: 320
-            "30d":
-              type: integer
-              example: 1250
+          additionalProperties:
+            type: integer
+          example: {}
         average_processing_time:
           type: number
           format: float
-          example: 15.2
+          example: 0.0
         failure_reasons:
           type: object
-          properties:
-            amount_mismatch:
-              type: integer
-              example: 35
-            address_mismatch:
-              type: integer
-              example: 20
-            transaction_failed:
-              type: integer
-              example: 15
+          additionalProperties:
+            type: integer
+          example: {}
 
     MonitoringStatsResponse:
       type: object
       properties:
         websocket_connections:
           type: object
-          properties:
-            active:
-              type: integer
-              example: 3
-            healthy:
-              type: integer
-              example: 2
-            degraded:
-              type: integer
-              example: 1
+          additionalProperties:
+            type: integer
+          example:
+            active: 0
+            healthy: 0
+            degraded: 0
         blockchain_monitoring:
           type: object
-          properties:
-            average_latency:
-              type: integer
-              example: 120
-            last_block_processed:
-              type: integer
-              example: 28756341
-            blocks_behind:
-              type: integer
-              example: 0
-            events_detected:
-              type: integer
-              example: 1250
+          additionalProperties:
+            type: object
+          example:
+            average_latency: 0
+            last_block_processed: 0
+            blocks_behind: 0
+            events_detected: 0
         validation_performance:
           type: object
-          properties:
-            average_validation_time:
-              type: number
-              format: float
-              example: 2.1
-            validation_success_rate:
-              type: number
-              format: float
-              example: 99.2
+          additionalProperties:
+            type: object
+          example:
+            average_validation_time: 0.0
+            validation_success_rate: 0.0
 
     SystemStatsResponse:
       type: object
       properties:
         uptime:
           type: integer
-          example: 86400
+          example: 0
         cpu_usage:
           type: number
           format: float
-          example: 25.5
+          example: 0.0
         memory_usage:
           type: number
           format: float
-          example: 45.2
+          example: 0.0
         disk_usage:
           type: number
           format: float
-          example: 12.3
+          example: 0.0
         api_response_time:
           type: integer
-          example: 45
+          example: 0
         error_rate:
           type: number
           format: float
-          example: 0.1
+          example: 0.0
         database_health:
           type: string
-          example: "healthy"
+          example: "unknown"
         blockchain_connection:
           type: string
-          example: "connected"
+          example: "unknown"
 
     WebSocketStatsResponse:
       type: object
@@ -592,24 +512,23 @@ components:
         frontend:
           type: object
           description: Frontend WebSocket connection statistics
+          additionalProperties:
+            type: object
           example:
-            totalConnections: 150
-            activeConnections: 3
-            connectionErrors: 5
-            reconnectAttempts: 2
-            lastConnectionTime: "2023-12-01T10:30:00Z"
-            lastDisconnectionTime: "2023-12-01T09:15:00Z"
+            totalConnections: 0
+            activeConnections: 0
+            connectionErrors: 0
         blockchain:
           type: object
           description: Blockchain WebSocket connection statistics
+          additionalProperties:
+            type: object
           example:
-            isConnected: true
-            currentEndpoint: "wss://bsc-ws-node.nariox.org"
-            totalConnectionAttempts: 25
-            reconnectAttempts: 3
-            activeSubscriptions: 3
-            lastConnectionTime: "2023-12-01T10:00:00Z"
-            lastDisconnectionTime: "2023-12-01T08:30:00Z"
+            isConnected: false
+            currentEndpoint: null
+            totalConnectionAttempts: 0
+            reconnectAttempts: 0
+            activeSubscriptions: 0
 
     WebSocketMessagesResponse:
       type: object
@@ -642,6 +561,13 @@ components:
         data:
           type: object
           description: Message payload data
+          example:
+            status: "paid"
+            transactionHash: "0x1234567890abcdef..."
+            blockNumber: 12345678
+            confirmations: 3
+            amount: "10.00"
+            token: "USDT"
         timestamp:
           type: string
           format: date-time
@@ -670,113 +596,107 @@ components:
           type: string
           example: "Missing required field: productId"
 
-  securitySchemes:
-    ApiKeyAuth:
-      type: apiKey
-      in: header
-      name: X-API-Key
+    # WebSocket message schemas
+    WebSocketMessage:
+      oneOf:
+        - $ref: '#/components/schemas/WebSocketConnectionAck'
+        - $ref: '#/components/schemas/WebSocketPaymentStatusUpdate'
+        - $ref: '#/components/schemas/WebSocketErrorMessage'
+        - $ref: '#/components/schemas/WebSocketPingPong'
 
-  # WebSocket message schemas
-  WebSocketMessage:
-    oneOf:
-      - $ref: '#/components/schemas/WebSocketConnectionAck'
-      - $ref: '#/components/schemas/WebSocketPaymentStatusUpdate'
-      - $ref: '#/components/schemas/WebSocketErrorMessage'
-      - $ref: '#/components/schemas/WebSocketPingPong'
+    WebSocketConnectionAck:
+      type: object
+      properties:
+        type:
+          type: string
+          example: "connection_ack"
+        paymentId:
+          type: string
+          example: "pay_1234567890"
+        data:
+          type: object
+          properties:
+            status:
+              type: string
+              example: "connected"
+            sessionId:
+              type: string
+              example: "sess_0987654321"
+        timestamp:
+          type: string
+          format: date-time
+          example: "2023-12-01T10:30:00Z"
 
-  WebSocketConnectionAck:
-    type: object
-    properties:
-      type:
-        type: string
-        example: "connection_ack"
-      paymentId:
-        type: string
-        example: "pay_1234567890"
-      data:
-        type: object
-        properties:
-          status:
-            type: string
-            example: "connected"
-          sessionId:
-            type: string
-            example: "sess_0987654321"
-      timestamp:
-        type: string
-        format: date-time
-        example: "2023-12-01T10:30:00Z"
+    WebSocketPaymentStatusUpdate:
+      type: object
+      properties:
+        type:
+          type: string
+          example: "payment_status_update"
+        paymentId:
+          type: string
+          example: "pay_1234567890"
+        data:
+          type: object
+          properties:
+            status:
+              type: string
+              enum: [created, pending, paid, expired, failed]
+              example: "paid"
+            transactionHash:
+              type: string
+              example: "0x1234567890abcdef..."
+            blockNumber:
+              type: integer
+              example: 12345678
+            confirmations:
+              type: integer
+              example: 3
+            amount:
+              type: string
+              example: "10.00"
+            token:
+              type: string
+              example: "USDT"
+        timestamp:
+          type: string
+          format: date-time
+          example: "2023-12-01T10:30:00Z"
 
-  WebSocketPaymentStatusUpdate:
-    type: object
-    properties:
-      type:
-        type: string
-        example: "payment_status_update"
-      paymentId:
-        type: string
-        example: "pay_1234567890"
-      data:
-        type: object
-        properties:
-          status:
-            type: string
-            enum: [created, pending, paid, expired, failed]
-            example: "paid"
-          transactionHash:
-            type: string
-            example: "0x1234567890abcdef..."
-          blockNumber:
-            type: integer
-            example: 12345678
-          confirmations:
-            type: integer
-            example: 3
-          amount:
-            type: string
-            example: "10.00"
-          token:
-            type: string
-            example: "USDT"
-      timestamp:
-        type: string
-        format: date-time
-        example: "2023-12-01T10:30:00Z"
+    WebSocketErrorMessage:
+      type: object
+      properties:
+        type:
+          type: string
+          example: "error"
+        paymentId:
+          type: string
+          example: "pay_1234567890"
+        data:
+          type: object
+          properties:
+            code:
+              type: integer
+              example: 400
+            message:
+              type: string
+              example: "Invalid payment ID"
+        timestamp:
+          type: string
+          format: date-time
+          example: "2023-12-01T10:30:00Z"
 
-  WebSocketErrorMessage:
-    type: object
-    properties:
-      type:
-        type: string
-        example: "error"
-      paymentId:
-        type: string
-        example: "pay_1234567890"
-      data:
-        type: object
-        properties:
-          code:
-            type: integer
-            example: 400
-          message:
-            type: string
-            example: "Invalid payment ID"
-      timestamp:
-        type: string
-        format: date-time
-        example: "2023-12-01T10:30:00Z"
-
-  WebSocketPingPong:
-    type: object
-    properties:
-      type:
-        type: string
-        enum: [ping, pong]
-        example: "ping"
-      paymentId:
-        type: string
-        example: "pay_1234567890"
-      timestamp:
-        type: string
-        format: date-time
-        example: "2023-12-01T10:30:00Z"
+    WebSocketPingPong:
+      type: object
+      properties:
+        type:
+          type: string
+          enum: [ping, pong]
+          example: "ping"
+        paymentId:
+          type: string
+          example: "pay_1234567890"
+        timestamp:
+          type: string
+          format: date-time
+          example: "2023-12-01T10:30:00Z"

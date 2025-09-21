@@ -55,7 +55,8 @@ func main() {
 		RPCURL:          cfg.BlockchainRPC,
 		WebsocketURL:    "", // Will be set from database
 		ChainID:         56, // BSC chain ID
-		ReceiverAddress: cfg.ReceiverAddress,
+		// ReceiverAddress is not used anymore as each payment uses its own address
+		ReceiverAddress: "", // Kept for backward compatibility but not used
 	}
 
 	// Set WebSocket URL if available
@@ -74,7 +75,8 @@ func main() {
 
 	// Initialize payment service
 	paymentConfig := service.PaymentConfig{
-		ReceiverAddress: cfg.ReceiverAddress,
+		// ReceiverAddress is not used anymore as each payment uses its own address
+		ReceiverAddress: "", // Kept for backward compatibility but not used
 		PaymentTimeout:  cfg.PaymentTimeout,
 	}
 
@@ -138,7 +140,6 @@ func setupRoutes(router *gin.Engine, handler *api.Handler, wsManager *websocket.
 		{
 			payments.POST("", handler.CreatePaymentSession)
 			payments.GET("/:paymentId", handler.GetPaymentSession)
-			payments.POST("/:paymentId/process", handler.ProcessPayment)
 		}
 
 		tokens := v1.Group("/tokens")

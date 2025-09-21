@@ -20,13 +20,16 @@ COPY . .
 RUN CGO_ENABLED=1 GOOS=linux go build -a -installsuffix cgo -tags sqlite_omit_load_extension -o bin/api ./cmd/api
 
 # Final stage
-FROM alpine:latest
+FROM alpine:3.18
 
 # Install ca-certificates for HTTPS requests
 RUN apk --no-cache add ca-certificates
 
 # Install curl for health checks
 RUN apk --no-cache add curl
+
+# Install wget for health checks
+RUN apk --no-cache add wget
 
 # Create app directory
 WORKDIR /app
@@ -45,7 +48,7 @@ EXPOSE 8080
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-  CMD curl -f http://127.0.0.1:8080/health || exit 1
+  CMD wget --quiet --tries=1 --spider http://localhost:8080/health || exit 1
 
 # Run the binary
 ENTRYPOINT ["./api"]

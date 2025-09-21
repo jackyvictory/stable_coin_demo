@@ -25,10 +25,10 @@ type PaymentService struct {
 // BlockchainService interface for blockchain operations
 type BlockchainService interface {
 	MonitorTokenTransfers(ctx context.Context, tokenAddress common.Address, expectedAmount *big.Int) (<-chan *blockchain.TokenTransfer, error)
-	ValidatePayment(ctx context.Context, txHash common.Hash, expectedAmount *big.Int, tokenSymbol string) (*blockchain.PaymentValidationResult, error)
+	ValidatePayment(ctx context.Context, txHash common.Hash, expectedAmount *big.Int, tokenSymbol, receiverAddress string) (*blockchain.PaymentValidationResult, error)
 	GetTokenBalance(ctx context.Context, tokenAddress, ownerAddress common.Address) (*big.Int, error)
 	GetLatestBlockNumber(ctx context.Context) (*big.Int, error)
-	StartPaymentMonitoringWithCallback(paymentID, tokenSymbol string, expectedAmount *big.Int, timeout time.Duration, callback blockchain.PaymentCallback) error
+	StartPaymentMonitoringWithCallback(paymentID, tokenSymbol, receiverAddress string, expectedAmount *big.Int, timeout time.Duration, callback blockchain.PaymentCallback) error
 	GetConnectionStats() map[string]interface{}
 	GetMessageLog(limit int) []blockchain.WebSocketMessageLog
 	Close()
@@ -214,7 +214,7 @@ func (s *PaymentService) GetBlockchainMessageLog(limit int) []blockchain.WebSock
 func (s *PaymentService) monitorPayment(ctx context.Context, session *models.PaymentSession) {
 	// Try to start WebSocket monitoring for this payment
 	if bcServiceWithWebSocket, ok := s.bcService.(interface {
-		StartPaymentMonitoringWithCallback(paymentID, tokenSymbol string, expectedAmount *big.Int, timeout time.Duration, callback blockchain.PaymentCallback) error
+		StartPaymentMonitoringWithCallback(paymentID, tokenSymbol, receiverAddress string, expectedAmount *big.Int, timeout time.Duration, callback blockchain.PaymentCallback) error
 	}); ok {
 		// Convert amount to wei for monitoring
 		amountWei := new(big.Int)
@@ -245,10 +245,10 @@ func (s *PaymentService) monitorPayment(ctx context.Context, session *models.Pay
 
 		// Start monitoring with 30 minute timeout
 		timeout := 30 * time.Minute
-		if err := bcServiceWithWebSocket.StartPaymentMonitoringWithCallback(session.PaymentID, session.TokenSymbol, amountWei, timeout, callback); err != nil {
+		if err := bcServiceWithWebSocket.StartPaymentMonitoringWithCallback(session.PaymentID, session.TokenSymbol, session.ReceiverAddress, amountWei, timeout, callback); err != nil {
 			fmt.Printf("Failed to start WebSocket monitoring for payment %s: %v\n", session.PaymentID, err)
 		} else {
-			fmt.Printf("Started WebSocket monitoring for payment %s\n", session.PaymentID)
+			fmt.Printf("Started WebSocket monitoring for payment %s to address %s\n", session.PaymentID, session.ReceiverAddress)
 		}
 	} else {
 		// Fallback to simulated monitoring
@@ -256,49 +256,6 @@ func (s *PaymentService) monitorPayment(ctx context.Context, session *models.Pay
 	}
 }
 
-// ProcessPayment processes a payment by validating the transaction
-func (s *PaymentService) ProcessPayment(ctx context.Context, paymentID string, txHash string) error {
-	// Get payment session
-	session, err := s.GetPaymentSession(ctx, paymentID)
-	if err != nil {
-		return fmt.Errorf("failed to get payment session: %w", err)
-	}
-
-	// Parse transaction hash
-	hash := common.HexToHash(txHash)
-
-	// Convert amount to big.Int with proper decimals
-	// For simplicity, assuming 18 decimals (standard for most tokens)
-	amountWei := new(big.Int)
-	amountWei.SetString(fmt.Sprintf("%.0f", session.Amount*1e18), 10)
-
-	// Validate payment
-	result, err := s.bcService.ValidatePayment(ctx, hash, amountWei, session.TokenSymbol)
-	if err != nil {
-		return fmt.Errorf("failed to validate payment: %w", err)
-	}
-
-	if result.Valid {
-		// Update payment status to paid
-		senderAddr := result.From.Hex()
-		txHashStr := result.Receipt.TxHash.Hex()
-		blockNum := result.Receipt.BlockNumber.Int64()
-		confirmedAt := time.Now()
-
-		err = s.UpdatePaymentStatus(ctx, paymentID, models.PaymentPaid, &senderAddr, &txHashStr, &blockNum, &confirmedAt)
-		if err != nil {
-			return fmt.Errorf("failed to update payment status: %w", err)
-		}
-	} else {
-		// Update payment status to failed
-		err = s.UpdatePaymentStatus(ctx, paymentID, models.PaymentFailed, nil, nil, nil, nil)
-		if err != nil {
-			return fmt.Errorf("failed to update payment status: %w", err)
-		}
-	}
-
-	return nil
-}
 
 // CreatePaymentRequest represents the request to create a payment session
 type CreatePaymentRequest struct {
@@ -309,6 +266,65 @@ type CreatePaymentRequest struct {
 	TokenSymbol     string  `json:"tokenSymbol"`
 	NetworkID       string  `json:"networkId"`
 	ReceiverAddress string  `json:"receiverAddress"`
+}
+
+// ValidatePaymentIfNeeded validates a payment against the blockchain if it's in a pending state
+func (s *PaymentService) ValidatePaymentIfNeeded(ctx context.Context, session *models.PaymentSession) (*models.PaymentSession, error) {
+	// Only validate payments that are created or pending
+	if session.Status != models.PaymentCreated && session.Status != models.PaymentPending {
+		return session, nil
+	}
+
+	// If we already have a transaction hash, validate it
+	if session.TransactionHash != nil && *session.TransactionHash != "" {
+		hash := common.HexToHash(*session.TransactionHash)
+
+		// Convert amount to wei for validation
+		amountWei := new(big.Int)
+		amountWei.SetString(fmt.Sprintf("%.0f", session.Amount*1e18), 10)
+
+		// Validate payment with the session's receiver address
+		result, err := s.bcService.ValidatePayment(ctx, hash, amountWei, session.TokenSymbol, session.ReceiverAddress)
+		if err != nil {
+			return session, fmt.Errorf("failed to validate payment: %w", err)
+		}
+
+		// Update session based on validation result
+		var newStatus models.PaymentStatus
+		var senderAddr *string
+		var blockNum *int64
+		var confirmedAt *time.Time
+
+		if result.Valid {
+			newStatus = models.PaymentPaid
+			sender := result.From.Hex()
+			senderAddr = &sender
+			blockNum = new(int64)
+			*blockNum = result.Receipt.BlockNumber.Int64()
+			// Use current time as confirmed time since we don't have it in the result
+			now := time.Now()
+			confirmedAt = &now
+		} else {
+			newStatus = models.PaymentFailed
+		}
+
+		// Update payment status in database
+		err = s.UpdatePaymentStatus(ctx, session.PaymentID, newStatus, senderAddr, session.TransactionHash, blockNum, confirmedAt)
+		if err != nil {
+			return session, fmt.Errorf("failed to update payment status: %w", err)
+		}
+
+		// Get updated session
+		updatedSession, err := s.GetPaymentSession(ctx, session.PaymentID)
+		if err != nil {
+			return session, fmt.Errorf("failed to get updated payment session: %w", err)
+		}
+
+		return updatedSession, nil
+	}
+
+	// If no transaction hash, return original session
+	return session, nil
 }
 
 // generatePaymentID generates a unique payment ID

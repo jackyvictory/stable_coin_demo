@@ -18,7 +18,6 @@ services:
       - DB_PATH=/app/data/payment.db
       - JWT_SECRET=payment_secret_key
       - BLOCKCHAIN_RPC=https://bsc-dataseed1.binance.org/
-      - RECEIVER_ADDRESS=0xe27577B0e3920cE35f100f66430de0108cb78a04
       - PAYMENT_TIMEOUT=30
     restart: unless-stopped
     healthcheck:

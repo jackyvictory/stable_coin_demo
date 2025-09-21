@@ -2,6 +2,9 @@ version: '3.8'
 
 services:
   backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
     image: payment-backend-local
     ports:
       - "8080:8080"
@@ -13,7 +16,6 @@ services:
       - DB_PATH=/app/data/payment.db
       - JWT_SECRET=payment_secret_key
       - BLOCKCHAIN_RPC=https://bsc-dataseed1.binance.org/
-      - RECEIVER_ADDRESS=0xe27577B0e3920cE35f100f66430de0108cb78a04
       - PAYMENT_TIMEOUT=30
     restart: unless-stopped
     healthcheck:
@@ -29,6 +31,7 @@ services:
       dockerfile: Dockerfile
       args:
         - API_BASE_URL=http://backend:8080
+    image: payment-frontend-local
     ports:
       - "3000:3000"
     depends_on:

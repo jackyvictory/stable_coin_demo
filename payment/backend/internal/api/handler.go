@@ -87,9 +87,9 @@ func (h *Handler) CreatePaymentSession(c *gin.Context) {
 	c.JSON(http.StatusCreated, toPaymentSessionResponse(session))
 }
 
-// GetPaymentSession retrieves a payment session
-// @Summary Get payment session status
-// @Description Retrieve the current status of a payment session
+// GetPaymentSession retrieves a payment session and validates blockchain status if needed
+// @Summary Get payment session status with blockchain validation
+// @Description Retrieve the current status of a payment session, automatically checking blockchain status for pending payments
 // @Tags payments
 // @Produce json
 // @Param paymentId path string true "Payment ID"
@@ -117,74 +117,20 @@ func (h *Handler) GetPaymentSession(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, toPaymentSessionResponse(session))
-}
-
-// ProcessPayment processes a payment by validating the transaction
-// @Summary Process payment
-// @Description Process a payment by validating the transaction hash
-// @Tags payments
-// @Accept json
-// @Produce json
-// @Param paymentId path string true "Payment ID"
-// @Param request body ProcessPaymentRequest true "Transaction hash"
-// @Success 200 {object} PaymentSessionResponse
-// @Failure 400 {object} ErrorResponse
-// @Failure 404 {object} ErrorResponse
-// @Failure 500 {object} ErrorResponse
-// @Router /api/v1/payments/{paymentId}/process [post]
-func (h *Handler) ProcessPayment(c *gin.Context) {
-	paymentID := c.Param("paymentId")
-	if paymentID == "" {
-		c.JSON(http.StatusBadRequest, ErrorResponse{
-			Code:    http.StatusBadRequest,
-			Message: "Payment ID is required",
-		})
-		return
-	}
-
-	var req ProcessPaymentRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, ErrorResponse{
-			Code:    http.StatusBadRequest,
-			Message: "Invalid request data",
-			Details: err.Error(),
-		})
-		return
-	}
-
-	if req.TransactionHash == "" {
-		c.JSON(http.StatusBadRequest, ErrorResponse{
-			Code:    http.StatusBadRequest,
-			Message: "Transaction hash is required",
-		})
-		return
-	}
-
-	// Process payment
-	err := h.paymentService.ProcessPayment(c.Request.Context(), paymentID, req.TransactionHash)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{
-			Code:    http.StatusInternalServerError,
-			Message: "Failed to process payment",
-			Details: err.Error(),
-		})
-		return
-	}
-
-	// Get updated payment session
-	session, err := h.paymentService.GetPaymentSession(c.Request.Context(), paymentID)
-	if err != nil {
-		c.JSON(http.StatusNotFound, ErrorResponse{
-			Code:    http.StatusNotFound,
-			Message: "Payment session not found",
-			Details: err.Error(),
-		})
-		return
+	// For created or pending payments, validate blockchain status
+	if session.Status == models.PaymentCreated || session.Status == models.PaymentPending {
+		updatedSession, err := h.paymentService.ValidatePaymentIfNeeded(c.Request.Context(), session)
+		if err != nil {
+			// Log the error but don't fail the request - return the original session
+			fmt.Printf("Warning: Failed to validate payment %s: %v\n", paymentID, err)
+		} else {
+			session = updatedSession
+		}
 	}
 
 	c.JSON(http.StatusOK, toPaymentSessionResponse(session))
 }
+
 
 // GetTokens retrieves all supported tokens
 // @Summary Get supported tokens
@@ -455,10 +401,6 @@ type CreatePaymentRequest struct {
 	ReceiverAddress string  `json:"receiverAddress"`
 }
 
-// ProcessPaymentRequest represents the request body for processing a payment
-type ProcessPaymentRequest struct {
-	TransactionHash string `json:"transactionHash"`
-}
 
 // PaymentSessionResponse represents the response for a payment session
 type PaymentSessionResponse struct {

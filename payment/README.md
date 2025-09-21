@@ -184,7 +184,6 @@ API使用OpenAPI 3.0规范进行文档化。您可以在`docs/api-spec.yaml`找�
 | DB_PATH | SQLite数据库路径 | ./data/payment.db |
 | JWT_SECRET | JWT密钥 | payment_secret_key |
 | BLOCKCHAIN_RPC | BSC RPC节点 | https://bsc-dataseed1.binance.org/ |
-| RECEIVER_ADDRESS | 收款地址 | 0xe27577B0e3920cE35f100f66430de0108cb78a04 |
 | PAYMENT_TIMEOUT | 支付会话超时(分钟) | 30 |
 
 ## 生产环境部署
@@ -314,13 +313,8 @@ curl -X POST http://localhost:8080/api/v1/payments \
     "receiverAddress": "0xe27577B0e3920cE35f100f66430de0108cb78a04"
   }'
 
-# 获取支付会话状态
+# 获取支付会话状态（会自动检查区块链状态）
 curl http://localhost:8080/api/v1/payments/{paymentId}
-
-# 处理支付
-curl -X POST http://localhost:8080/api/v1/payments/{paymentId}/process \
-  -H "Content-Type: application/json" \
-  -d '{"transactionHash": "0x..."}'
 ```
 
 ## 架构概览

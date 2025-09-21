@@ -12,7 +12,6 @@ type Config struct {
 	DBPath          string
 	JWTSecret       string
 	BlockchainRPC   string
-	ReceiverAddress string
 	PaymentTimeout  time.Duration
 	DebugMode       bool
 }
@@ -24,7 +23,6 @@ func Load() *Config {
 		DBPath:          getEnv("DB_PATH", "./data/payment.db"),
 		JWTSecret:       getEnv("JWT_SECRET", "payment_secret_key"),
 		BlockchainRPC:   getEnv("BLOCKCHAIN_RPC", "https://bsc-dataseed1.binance.org/"),
-		ReceiverAddress: getEnv("RECEIVER_ADDRESS", "0xe27577B0e3920cE35f100f66430de0108cb78a04"),
 		PaymentTimeout:  getEnvDuration("PAYMENT_TIMEOUT", 30*time.Minute),
 		DebugMode:       getEnv("DEBUG_MODE", "false") == "true",
 	}

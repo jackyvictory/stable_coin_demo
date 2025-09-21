@@ -34,7 +34,7 @@ type Config struct {
 	RPCURL         string `json:"rpcUrl"`
 	WebsocketURL   string `json:"websocketUrl"`
 	ChainID        int64  `json:"chainId"`
-	ReceiverAddress string `json:"receiverAddress"`
+	ReceiverAddress string `json:"receiverAddress"` // Deprecated: Not used anymore as each payment uses its own address
 }
 
 // WebSocketEndpoint represents a WebSocket endpoint configuration
@@ -506,12 +506,6 @@ func (s *Service) handleTransferEvent(event map[string]interface{}) {
 	fromAddr := common.HexToAddress(fromTopic)
 	toAddr := common.HexToAddress(toTopic)
 
-	// Check if this is a transfer to our receiver address
-	receiverAddr := common.HexToAddress(s.config.ReceiverAddress)
-	if toAddr != receiverAddr {
-		return
-	}
-
 	// Extract amount from data
 	data, ok := event["data"].(string)
 	if !ok {
@@ -542,8 +536,18 @@ func (s *Service) handleTransferEvent(event map[string]interface{}) {
 	fmt.Printf("[Blockchain WebSocket] Transfer detected: %s -> %s, Amount: %s, TX: %s, Token: %s\n",
 		fromAddr.Hex(), toAddr.Hex(), amount.String(), txHash.Hex(), tokenSymbol)
 
-	// Trigger payment detection event
-	s.triggerPaymentDetected(fromAddr, toAddr, amount, txHash, blockNumber, tokenSymbol)
+	// Check if this transfer matches any active payments
+	// Instead of checking against a single global receiver address, we check against all active payment addresses
+	activePaymentsMu.RLock()
+	hasActivePayments := len(activePayments) > 0
+	activePaymentsMu.RUnlock()
+
+	if hasActivePayments {
+		// Trigger payment detection event
+		s.triggerPaymentDetected(fromAddr, toAddr, amount, txHash, blockNumber, tokenSymbol)
+	} else {
+		fmt.Printf("[Blockchain WebSocket] No active payments monitoring, ignoring transfer\n")
+	}
 }
 
 // getTokenSymbolFromAddress determines token symbol from contract address
@@ -575,8 +579,8 @@ func (s *Service) triggerPaymentDetected(from, to common.Address, amount *big.In
 	}
 
 	// Log the detected payment
-	fmt.Printf("[Blockchain WebSocket] Payment detected: %s %s from %s in transaction %s at block %s\n",
-		amount.String(), tokenSymbol, from.Hex(), txHash.Hex(), blockNumber.String())
+	fmt.Printf("[Blockchain WebSocket] Payment detected: %s %s from %s to %s in transaction %s at block %s\n",
+		amount.String(), tokenSymbol, from.Hex(), to.Hex(), txHash.Hex(), blockNumber.String())
 
 	// Check if this payment matches any active monitoring
 	activePaymentsMu.RLock()
@@ -585,6 +589,7 @@ func (s *Service) triggerPaymentDetected(from, to common.Address, amount *big.In
 	// Create a list of matching payments to avoid concurrent map access issues
 	matchingPayments := make([]*activePayment, 0)
 	paymentIDs := make([]string, 0)
+	receiverAddresses := make([]common.Address, 0)
 
 	for paymentID, payment := range activePayments {
 		// Check if the token symbol matches
@@ -597,12 +602,32 @@ func (s *Service) triggerPaymentDetected(from, to common.Address, amount *big.In
 		if amount.Cmp(payment.expectedAmount) == 0 {
 			matchingPayments = append(matchingPayments, payment)
 			paymentIDs = append(paymentIDs, paymentID)
+			receiverAddresses = append(receiverAddresses, payment.receiverAddress)
+		}
+	}
+
+	// Filter matching payments by receiver address
+	actualMatchingPayments := make([]*activePayment, 0)
+	actualPaymentIDs := make([]string, 0)
+
+	for i, payment := range matchingPayments {
+		paymentID := paymentIDs[i]
+		expectedReceiver := receiverAddresses[i]
+
+		// Check if the receiver address matches
+		if to == expectedReceiver {
+			actualMatchingPayments = append(actualMatchingPayments, payment)
+			actualPaymentIDs = append(actualPaymentIDs, paymentID)
+			fmt.Printf("[Blockchain WebSocket] Payment %s matches receiver address %s\n", paymentID, expectedReceiver.Hex())
+		} else {
+			fmt.Printf("[Blockchain WebSocket] Payment %s does not match receiver address %s (expected) vs %s (actual)\n",
+				paymentID, expectedReceiver.Hex(), to.Hex())
 		}
 	}
 
 	// Trigger callbacks for matching payments and send WebSocket notifications
-	for i, payment := range matchingPayments {
-		paymentID := paymentIDs[i]
+	for i, payment := range actualMatchingPayments {
+		paymentID := actualPaymentIDs[i]
 		// Remove the payment from active monitoring
 		activePaymentsMu.RUnlock()
 		activePaymentsMu.Lock()
@@ -643,6 +668,8 @@ func (s *Service) triggerPaymentDetected(from, to common.Address, amount *big.In
 }
 
 // subscribeToTransferEvents subscribes to Transfer events for a specific token
+// Note: This method is deprecated and should not be used. For payment-specific monitoring,
+// StartPaymentMonitoringWithCallback should be used instead.
 func (s *Service) subscribeToTransferEvents(tokenAddress common.Address, tokenSymbol string) error {
 	s.wsMu.Lock()
 	defer s.wsMu.Unlock()
@@ -651,66 +678,35 @@ func (s *Service) subscribeToTransferEvents(tokenAddress common.Address, tokenSy
 		return fmt.Errorf("WebSocket not connected")
 	}
 
-	// Create subscription request for Transfer events to our receiver address
-	receiverAddr := common.HexToAddress(s.config.ReceiverAddress)
-	paddedReceiver := common.BytesToHash(receiverAddr.Bytes())
+	// This method is deprecated as we no longer use a global receiver address.
+	// Payments should use StartPaymentMonitoringWithCallback with their specific address.
+	// We're keeping this method for backward compatibility but it won't actually subscribe to anything.
+	fmt.Printf("[Blockchain WebSocket] WARNING: subscribeToTransferEvents is deprecated and does nothing\n")
+	fmt.Printf("[Blockchain WebSocket] Use StartPaymentMonitoringWithCallback for payment-specific monitoring\n")
 
-	subscribeMsg := map[string]interface{}{
-		"jsonrpc": "2.0",
-		"method":  "eth_subscribe",
-		"params": []interface{}{
-			"logs",
-			map[string]interface{}{
-				"address":   tokenAddress.Hex(),
-				"topics":    []interface{}{
-					"0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef", // Transfer event signature
-					nil, // from address (any)
-					paddedReceiver.Hex(), // to address (our receiver)
-				},
-			},
-		},
-		"id": time.Now().Unix(),
-	}
-
-	fmt.Printf("[Blockchain WebSocket] Subscribing to Transfer events for %s (%s)\n", tokenSymbol, tokenAddress.Hex())
-
-	// Log the outgoing subscription message
-	s.logMessage("subscribe_transfer", "out", map[string]interface{}{
+	// Log the deprecated call
+	s.logMessage("subscribe_transfer_deprecated", "out", map[string]interface{}{
 		"tokenSymbol": tokenSymbol,
 		"tokenAddress": tokenAddress.Hex(),
-		"message": subscribeMsg,
+		"warning": "This method is deprecated and does nothing",
 	})
 
-	if err := s.wsConn.WriteJSON(subscribeMsg); err != nil {
-		s.logMessage("subscribe_error", "out", map[string]interface{}{
-			"tokenSymbol": tokenSymbol,
-			"tokenAddress": tokenAddress.Hex(),
-			"error": err.Error(),
-		})
-		return fmt.Errorf("failed to send subscription request: %w", err)
-	}
-
-	// Update subscription count
-	s.activeSubscriptions++
-
+	// Return success but don't actually subscribe
 	return nil
 }
 
 // subscribeToAllTransferEvents subscribes to Transfer events for all supported tokens
+// Note: This method is deprecated as subscribeToTransferEvents is now a no-op
 func (s *Service) subscribeToAllTransferEvents() {
-	// Supported token addresses on BSC
-	tokenAddresses := map[string]string{
-		"USDT": "0x55d398326f99059fF775485246999027B3197955",
-		"USDC": "0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d",
-		"BUSD": "0xe9e7CEA3DedcA5984780Bafc599bD69ADd087D56",
-	}
+	// This method is deprecated as subscribeToTransferEvents is now a no-op
+	// Payments should use StartPaymentMonitoringWithCallback with their specific address
+	fmt.Printf("[Blockchain WebSocket] WARNING: subscribeToAllTransferEvents is deprecated and does nothing\n")
+	fmt.Printf("[Blockchain WebSocket] Use StartPaymentMonitoringWithCallback for payment-specific monitoring\n")
 
-	for symbol, addressStr := range tokenAddresses {
-		tokenAddress := common.HexToAddress(addressStr)
-		if err := s.subscribeToTransferEvents(tokenAddress, symbol); err != nil {
-			fmt.Printf("[Blockchain WebSocket] Failed to subscribe to %s Transfer events: %v\n", symbol, err)
-		}
-	}
+	// Log the deprecated call
+	s.logMessage("subscribe_all_transfer_deprecated", "out", map[string]interface{}{
+		"warning": "This method is deprecated and does nothing",
+	})
 }
 
 
@@ -719,6 +715,7 @@ func (s *Service) subscribeToAllTransferEvents() {
 type activePayment struct {
 	tokenSymbol     string
 	expectedAmount  *big.Int
+	receiverAddress common.Address
 	callback        PaymentCallback
 	startTime       time.Time
 	timeout         time.Duration
@@ -729,17 +726,23 @@ var activePayments = make(map[string]*activePayment)
 var activePaymentsMu sync.RWMutex
 
 // StartPaymentMonitoringWithCallback starts monitoring for a specific payment with a callback
-func (s *Service) StartPaymentMonitoringWithCallback(paymentID, tokenSymbol string, expectedAmount *big.Int, timeout time.Duration, callback PaymentCallback) error {
+func (s *Service) StartPaymentMonitoringWithCallback(paymentID, tokenSymbol, receiverAddress string, expectedAmount *big.Int, timeout time.Duration, callback PaymentCallback) error {
+	// Convert receiver address to common.Address
+	receiverAddr := common.HexToAddress(receiverAddress)
+
 	// Store payment information
 	activePaymentsMu.Lock()
 	activePayments[paymentID] = &activePayment{
-		tokenSymbol:    tokenSymbol,
-		expectedAmount: expectedAmount,
-		callback:       callback,
-		startTime:      time.Now(),
-		timeout:        timeout,
+		tokenSymbol:     tokenSymbol,
+		expectedAmount:  expectedAmount,
+		receiverAddress: receiverAddr,
+		callback:        callback,
+		startTime:       time.Now(),
+		timeout:         timeout,
 	}
 	activePaymentsMu.Unlock()
+
+	fmt.Printf("[Blockchain WebSocket] Started monitoring for payment %s to address %s\n", paymentID, receiverAddr.Hex())
 
 	// Set up a timeout timer
 	if timeout > 0 {
@@ -824,7 +827,7 @@ func (s *Service) MonitorTokenTransfers(ctx context.Context, tokenAddress common
 }
 
 // ValidatePayment validates a payment by checking the transaction
-func (s *Service) ValidatePayment(ctx context.Context, txHash common.Hash, expectedAmount *big.Int, tokenSymbol string) (*PaymentValidationResult, error) {
+func (s *Service) ValidatePayment(ctx context.Context, txHash common.Hash, expectedAmount *big.Int, tokenSymbol, expectedReceiverAddress string) (*PaymentValidationResult, error) {
 	// Get transaction receipt
 	receipt, err := s.client.TransactionReceipt(ctx, txHash)
 	if err != nil {
@@ -847,8 +850,8 @@ func (s *Service) ValidatePayment(ctx context.Context, txHash common.Hash, expec
 	}
 
 	// For token transfers, we need to parse the logs
-	expectedTo := common.HexToAddress(s.config.ReceiverAddress)
-	
+	expectedTo := common.HexToAddress(expectedReceiverAddress)
+
 	// Check if this is a direct ETH transfer or token transfer
 	if tx.To() != nil && *tx.To() == expectedTo {
 		// Direct ETH transfer
@@ -877,7 +880,7 @@ func (s *Service) ValidatePayment(ctx context.Context, txHash common.Hash, expec
 		if err != nil {
 			return nil, fmt.Errorf("failed to validate token transfer: %w", err)
 		}
-		
+
 		if valid {
 			return &PaymentValidationResult{
 				Valid:   true,
